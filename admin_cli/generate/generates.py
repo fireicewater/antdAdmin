@@ -1,14 +1,28 @@
 import os
-
+import functools
 import aiofiles
 import django
 from django.conf import settings
 from django.db.models import ForeignKey
 from jinja2 import PackageLoader, Environment
-
+from django.db.models import DateTimeField, ForeignKey, ImageField, FileField
 from admin_cli.utils import get_model_import_path
 
 
+def gen_wrapper(func):
+    @functools.wraps(func)
+    async def wrapper(*args, **kw):
+        userApps = args[0]
+        env = Environment(loader=PackageLoader('admin_cli', 'templates'))
+        if len(userApps) == 0:
+            print("serializers models 为空")
+            return
+        for model in userApps:
+            await func(model, env)
+    return wrapper
+
+
+@gen_wrapper
 async def gen_serializer(label, env):
     """
     生成单个模块文件
@@ -53,10 +67,40 @@ async def gen_serializer(label, env):
         async with aiofiles.open(path, 'w', encoding='utf-8') as fw:
             await fw.write(str)
 
+@gen_wrapper
+async def gen_filter(label, env):
+    # import dict key import_path value list(model_name)
+    app_model_import_dict = {}
+    # moderl dict key moderl_name value list((field_name,type))
+    models = {}
+    # exclude dict key moderl_name value list((field_name))
+    exclude = {}
+    for model in django.apps.apps.get_models():
+        model_name = model._meta.model.__name__
+        app_label = model._meta.app_label
+        if label == app_label:
+            import_path = get_model_import_path(model)
+            app_model_import_dict.setdefault(import_path, []).append(model_name)
+            models[model_name] = set([])
+            for field in model.objects.model._meta.fields:
+                name = field.name
+                if isinstance(field, ImageField):
+                    exclude.setdefault(model_name, set([])).add(name)
+                elif isinstance(field, FileField):
+                    exclude.setdefault(model_name, set([])).add(name)
+                elif isinstance(field, ForeignKey):
+                    models[model_name].add((name, "foreign"))
+                elif isinstance(field, DateTimeField):
+                    models[model_name].add((name, "date"))
+                elif field.__class__.__name__ == "TimeZoneField":
+                    exclude.setdefault(model_name, set([])).add(name)
+    template = env.get_template('filter.txt')
+    str = template.render(app_model_import_dict=app_model_import_dict, models=models, excludes=exclude)
+    path = f'{settings.BASE_DIR}/{label}/filters.py'
+    if os.path.exists(path):
+        print("已存在filters.py跳过")
+    else:
+        async with aiofiles.open(path, 'w', encoding='utf-8') as fw:
+            await fw.write(str)
 
-async def gen_app_serializer(userApps, env):
-    if len(userApps) == 0:
-        print("serializers models 为空")
-        return
-    for model in userApps:
-        await gen_serializer(model, env)
+

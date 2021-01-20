@@ -1,0 +1,31 @@
+from django_filters import rest_framework as filters
+from xadmin_api.custom import DateFromToRangeFilter
+{# 导入模板import #}
+{%- for path,m_list in app_model_import_dict.items() -%}
+from {{ path }}.models import {{ m_list|join(",") }}
+{% endfor %}
+
+{% for model,types in models.items() -%}
+class {{ model }}Filter(filters.FilterSet):
+    {% for type in types%}
+    {% if type|length >0 -%}
+    {% with field=type[0] %}
+    {% if types[1]=="date"%}
+    {{ field }} = DateFromToRangeFilter(field_name="{{ field }}")
+    {% elif types[1]="foreign" %}
+    {{ field }} = filters.CharFilter(field_name="{{ field }}")
+    {% endwith %}
+    {% endif %}
+    {% endfor %}
+
+    class Meta:
+        model = {{ model }}
+        {% with exclude=excludes[model] %}
+        {% if exclude|length >0 %}
+        exclude = [{{exclude|join(",")}}]
+        {% else %}
+        exclude = []
+        {% endif %}
+        {% endwith %}
+{% endfor %}
+
