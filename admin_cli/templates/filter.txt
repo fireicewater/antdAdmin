@@ -12,18 +12,19 @@ class {{ model }}Filter(filters.FilterSet):
     {% with field=type[0] %}
     {% if types[1]=="date"%}
     {{ field }} = DateFromToRangeFilter(field_name="{{ field }}")
-    {% elif types[1]="foreign" %}
+    {% elif types[1]=="foreign" %}
     {{ field }} = filters.CharFilter(field_name="{{ field }}")
+    {% endif %}
     {% endwith %}
     {% endif %}
     {% endfor %}
 
     class Meta:
         model = {{ model }}
-        {% with exclude=excludes[model] %}
-        {% if exclude|length >0 %}
+        {% with exclude=excludes[model] -%}
+        {% if exclude|length >0 -%}
         exclude = [{{exclude|join(",")}}]
-        {% else %}
+        {% else -%}
         exclude = []
         {% endif %}
         {% endwith %}
