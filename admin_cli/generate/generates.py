@@ -3,7 +3,7 @@ import functools
 import aiofiles
 import django
 from django.conf import settings
-from django.db.models import ForeignKey
+from django.db.models import ForeignKey, CharField
 from jinja2 import PackageLoader, Environment
 from django.db.models import DateTimeField, ForeignKey, ImageField, FileField
 from admin_cli.utils import get_model_import_path
@@ -19,6 +19,7 @@ def gen_wrapper(func):
             return
         for model in userApps:
             await func(model, env)
+
     return wrapper
 
 
@@ -31,7 +32,7 @@ async def gen_serializer(label, env):
     """
     # import dict key import_path value list(model_name)
     app_model_import_dict = {}
-    # moderl dict key moderl_name value list((field_name,foreign_model_name,bool(是否为many to many)))
+    # model dict key model_name value list((field_name,foreign_model_name,bool(是否为many to many)))
     models = {}
     for one in django.apps.apps.get_models():
         model_name = one._meta.model.__name__
@@ -57,7 +58,6 @@ async def gen_serializer(label, env):
                 models[model_name].add((name, real_model_name, True))
                 foreign_path = get_model_import_path(real_model_name)
                 app_model_import_dict.setdefault(foreign_path, set([]).add(real_model_name))
-    # env = Environment(loader=PackageLoader('admin_cli', 'templates'))
     template = env.get_template('serializer.txt')
     str = template.render(app_model_import_dict=app_model_import_dict, models=models)
     path = f'{settings.BASE_DIR}/{label}/serializers.py'
@@ -67,13 +67,14 @@ async def gen_serializer(label, env):
         async with aiofiles.open(path, 'w', encoding='utf-8') as fw:
             await fw.write(str)
 
+
 @gen_wrapper
 async def gen_filter(label, env):
     # import dict key import_path value list(model_name)
     app_model_import_dict = {}
-    # moderl dict key moderl_name value list((field_name,type))
+    # model dict key model_name value list((field_name,type))
     models = {}
-    # exclude dict key moderl_name value list((field_name))
+    # exclude dict key model_name value list((field_name))
     exclude = {}
     for model in django.apps.apps.get_models():
         model_name = model._meta.model.__name__
@@ -104,3 +105,34 @@ async def gen_filter(label, env):
             await fw.write(str)
 
 
+@gen_wrapper
+async def gen_view(label, env):
+    # import dict key import_path value list(model_name)
+    app_model_import_dict = {}
+    # model dict key model_name value list((field_name,foreign_model_name,bool(是否为many to many)))
+    models = []
+    # model dict key model_name value list(searchfields name)
+    model_search_dict = {}
+    for one in django.apps.apps.get_models():
+        model_name = one._meta.model.__name__
+        app_label = one._meta.app_label
+        if label == app_label:
+            import_path = get_model_import_path(one)
+            app_model_import_dict.setdefault(import_path, []).append(model_name)
+            models.append(model_name)
+            search_list = []
+            for field in one.objects.model._meta.fields:
+                name = field.name
+                if isinstance(field, CharField):
+                    search_list.append('"' + name + '"')
+            model_search_dict[model_name] = search_list
+    serializers_list = [one + "Serializer" for one in models]
+    filters_list = [one + "Filter" for one in models]
+    template = env.get_template('views.txt')
+    str = template.render(app_model_import_dict=app_model_import_dict, models=models, serializers_list=serializers_list,
+                          filters_list=filters_list,model_search_dict=model_search_dict)
+    path = f'{settings.BASE_DIR}/{label}/views.py'
+    if os.path.exists(path):
+        print("已存在filters.py跳过")
+    async with aiofiles.open(path, 'w', encoding='utf-8') as fw:
+        await fw.write(str)

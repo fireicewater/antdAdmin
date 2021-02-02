@@ -1,0 +1,20 @@
+from rest_framework import viewsets
+from xadmin_api.custom import XadminViewSet
+
+{# 导入模板import #}
+{%- for path,m_list in app_model_import_dict.items() -%}
+from {{ path }}.models import {{ m_list|join(",") }}
+{% endfor %}
+from .serializers import {{ serializers_list|join(",") }}
+from .filters import {{ filters_list|join(",") }}
+
+
+{% for model in models -%}
+class {{ model }}ViewSet(XadminViewSet):
+    serializer_class = {{ model }}Serializer
+    queryset = {{ model }}.objects.all().order_by('-pk')
+    filter_class = {{ model }}Filter
+    search_fields = [{{ model_search_dict[model]|join(",") }}]
+
+{% endfor %}
+

@@ -1,0 +1,6 @@
+Django~=3.1.5
+django-filter~=2.4.0
+djangorestframework~=3.12.2
+aiofiles~=0.6.0
+Jinja2~=2.11.2
+demjson~=2.2.4
