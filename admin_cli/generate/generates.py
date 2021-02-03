@@ -136,3 +136,6 @@ async def gen_view(label, env):
         print("已存在filters.py跳过")
     async with aiofiles.open(path, 'w', encoding='utf-8') as fw:
         await fw.write(str)
+
+
+async def

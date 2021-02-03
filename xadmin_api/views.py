@@ -13,18 +13,16 @@ from django.views import View
 from rest_framework import views, status, serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
+from rest_framework_jwt.serializers import jwt_payload_handler, jwt_encode_handler
 
-from xadmin_api.custom import MtyCustomExecView
-from xadmin_api.custom import XadminViewSet, custom_exception_handler
-from xadmin_api.filters import PermissionFilter, GroupFilter, UserFilter, ContentTypeFilter
-from xadmin_api.filters import TyAdminSysLogFilter, TyAdminEmailVerifyRecordFilter
+from xadmin_api.custom import MtyCustomExecView, XadminViewSet, custom_exception_handler, BaseResponseData
+from xadmin_api.filters import PermissionFilter, GroupFilter, UserFilter, ContentTypeFilter, TyAdminSysLogFilter, \
+    TyAdminEmailVerifyRecordFilter
 from xadmin_api.models import TyAdminSysLog, TyAdminEmailVerifyRecord
 from xadmin_api.serializers import PermissionCreateUpdateSerializer, GroupCreateUpdateSerializer, \
-    UserCreateUpdateSerializer, ContentTypeCreateUpdateSerializer
-from xadmin_api.serializers import PermissionListSerializer, GroupListSerializer, UserListSerializer, \
+    UserCreateUpdateSerializer, ContentTypeCreateUpdateSerializer, PermissionListSerializer, GroupListSerializer, \
+    UserListSerializer, TyAdminSysLogSerializer, TyAdminEmailVerifyRecordSerializer, SysUserChangePasswordSerializer, \
     ContentTypeListSerializer
-from xadmin_api.serializers import TyAdminSysLogSerializer, TyAdminEmailVerifyRecordSerializer, \
-    SysUserChangePasswordSerializer
 from xadmin_api.utils import send_email, save_uploaded_file, gen_file_name, log_save
 
 SysUser = get_user_model()
@@ -77,20 +75,18 @@ class LoginView(MtyCustomExecView):
     permission_classes = ()
 
     def post(self, request, *args, **kwargs):
-        if request.data["type"] == "account":
-            user = authenticate(request, username=request.data["userName"], password=request.data["password"])
-            log_save(user=request.user.username, request=self.request, flag="登录",
-                     message=f'{request.user.username}登录成功',
-                     log_type="login")
-            if user is not None:
-                login(request, user)
-                return JsonResponse({
-                    "status": 'ok',
-                    "type": "account",
-                    "currentAuthority": ""
-                })
-            else:
-                raise ValidationError({"password": ["密码错误"]})
+        user = authenticate(request, username=request.data["userName"], password=request.data["password"])
+        log_save(user=request.user.username, request=self.request, flag="登录",
+                 message=f'{request.user.username}登录成功',
+                 log_type="login")
+        if user is not None:
+            payload = jwt_payload_handler(user)
+            token = jwt_encode_handler(payload)
+            return BaseResponseData.success(data={
+                "token": token
+            })
+        else:
+            raise ValidationError({"password": ["密码错误"]})
 
 
 class UserSendCaptchaView(MtyCustomExecView):

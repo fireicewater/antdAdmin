@@ -1,29 +1,113 @@
 from copy import deepcopy
-from django.core.exceptions import ValidationError as DjangoValidationError
+from enum import Enum
+from typing import Any
+
 from django.conf import settings
-from django.core.files.images import ImageFile
-from django.db import models
-from django.db.models import QuerySet, ManyToManyRel
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import QuerySet
 from django.db.models.fields.files import ImageFieldFile, FieldFile
 from django.http import JsonResponse
+from django_filters import RangeFilter
+from django_filters.fields import DateRangeField
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import viewsets, mixins, status
+from django_filters.widgets import RangeWidget
+from rest_framework import mixins
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.filters import SearchFilter
 from rest_framework.generics import GenericAPIView, get_object_or_404
-from rest_framework.response import Response
 from rest_framework.settings import api_settings
+from rest_framework.views import exception_handler, APIView
 from rest_framework.viewsets import ViewSetMixin
 
+from xadmin_api.pagination import CustomPageNumberPagination
 from xadmin_api.ty_settings import MAX_LIST_DISPLAY_COUNT
 from xadmin_api.utils import log_save
-from xadmin_api.pagination import CustomPageNumberPagination
-from django_filters import rest_framework as filters, RangeFilter
-from django_filters.fields import DateRangeField
-from django_filters.widgets import RangeWidget
-from rest_framework.exceptions import ValidationError
-from rest_framework.views import exception_handler, APIView
-from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+
+
+class ShowTypeEnum(Enum):
+    # 不提示错误
+    SILENT = 0
+    # 警告信息提示
+    WARN_MESSAGE = 1
+    # 错误信息提示
+    ERROR_MESSAGE = 2
+    # 通知提示
+    NOTIFICATION = 4
+    # 页面跳转
+    REDIRECT = 9
+
+
+class BaseResponseData(object):
+    """
+       自定义统一返回
+    """
+    # 统一error返回
+    __errors = {
+        200: '服务器成功返回请求的数据。',
+        201: '新建或修改数据成功。',
+        202: '一个请求已经进入后台排队（异步任务）。',
+        204: '删除数据成功。',
+        400: '发出的请求有错误，服务器没有进行新建或修改数据的操作。',
+        401: '用户没有权限（令牌、用户名、密码错误）。',
+        403: '用户得到授权，但是访问是被禁止的。',
+        404: '发出的请求针对的是不存在的记录，服务器没有进行操作。',
+        406: '请求的格式不可得。',
+        410: '请求的资源被永久删除，且不会再得到的。',
+        422: '当创建一个对象时，发生一个验证错误。',
+        500: '服务器发生错误，请检查服务器。',
+        502: '网关错误。',
+        503: '服务不可用，服务器暂时过载或维护。',
+        504: '网关超时。',
+    }
+
+    def __init__(self, success: bool, **kwargs):
+        self.success = success
+        self.data = kwargs["data"] if "data" in kwargs else None
+        self.errorCode = kwargs["errorCode"] if "errorCode" in kwargs else None
+        self.errorMessage = kwargs["errorMessage"] if "errorMessage" in kwargs else None
+        showType = kwargs.get("showType")
+        if showType:
+            self.showType = showType.value
+
+    @staticmethod
+    def success(**kwargs) -> JsonResponse:
+        data = BaseResponseData(success=True)
+        kwargs["safe"] = False
+        return JsonResponse(data, **kwargs)
+
+    @staticmethod
+    def success(data: Any, **kwargs) -> JsonResponse:
+        response_data = BaseResponseData(success=True, data=data)
+        kwargs["safe"] = False
+        return JsonResponse(response_data.__dict__, **kwargs)
+
+    @staticmethod
+    def error(errorCode: int, **kwargs) -> JsonResponse:
+        message = BaseResponseData.__errors.get(errorCode)
+        data = BaseResponseData(success=False, errorCode=errorCode, errorMessage=message,
+                                showType=ShowTypeEnum["ERROR_MESSAGE"].value)
+        return JsonResponse(data, **kwargs)
+
+    @staticmethod
+    def error(errorCode: int, errorMessage: str, **kwargs) -> JsonResponse:
+        data = BaseResponseData(success=False, errorCode=errorCode, errorMessage=errorMessage,
+                                showType=ShowTypeEnum["ERROR_MESSAGE"].value)
+        return JsonResponse(data, **kwargs)
+
+    @staticmethod
+    def error(errorCode: int, errorMessage: str, showType: ShowTypeEnum, **kwargs) -> JsonResponse:
+        data = BaseResponseData(success=False, errorCode=errorCode, errorMessage=errorMessage,
+                                showType=showType.value)
+        return JsonResponse(data, **kwargs)
+
+    @staticmethod
+    def error(errorCode: int, showType: ShowTypeEnum, **kwargs) -> JsonResponse:
+        message = BaseResponseData.__errors.get(errorCode)
+        data = BaseResponseData(success=False, errorCode=errorCode, errorMessage=message,
+                                showType=showType.value)
+        return JsonResponse(data, **kwargs)
 
 
 def custom_exception_handler(exc, context):
@@ -60,7 +144,6 @@ class CsrfExemptSessionAuthentication(SessionAuthentication):
 
 
 class MtyCustomExecView(APIView):
-    authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
 
     def get_exception_handler(self):
         return custom_exception_handler
@@ -78,7 +161,15 @@ class XadminViewSet(MtyModelViewSet):
         api_settings.DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
         if "all" in request.query_params and len(request.query_params.keys()) == 1:
             self.pagination_class = None
-        return super().list(request, args, kwargs)
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return BaseResponseData.success(data=serializer.data)
 
     def create(self, request, *args, **kwargs):
         try:
@@ -91,7 +182,8 @@ class XadminViewSet(MtyModelViewSet):
             #     serializer.validated_data[key] = value
             self.perform_create(serializer)
             headers = self.get_success_headers(serializer.data)
-            ret = Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+            # ret = Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+            ret = BaseResponseData.success(data=serializer.data, headers=headers)
             log_save(user=request.user.username, request=self.request, flag="新增",
                      message=f'{self.serializer_class.Meta.model._meta.verbose_name}: {ret.data.__str__()}被新增',
                      log_type=self.serializer_class.Meta.model._meta.model_name)
@@ -130,7 +222,7 @@ class XadminViewSet(MtyModelViewSet):
             # forcibly invalidate the prefetch cache on the instance.
             instance._prefetched_objects_cache = {}
 
-        ret = Response(serializer.data)
+        ret = BaseResponseData.success(data=serializer.data)
         log_save(user=request.user.username, request=self.request, flag="更新",
                  message=f'{self.serializer_class.Meta.model._meta.verbose_name}: {ret.data.__str__()}被更新',
                  log_type=self.serializer_class.Meta.model._meta.model_name)
@@ -148,9 +240,7 @@ class XadminViewSet(MtyModelViewSet):
         log_save(user=request.user.username, request=self.request, flag="删除",
                  message=f'{self.serializer_class.Meta.model._meta.verbose_name}: {"".join(names)}被删除',
                  log_type=self.serializer_class.Meta.model._meta.model_name)
-        return Response({
-            "code": 200
-        })
+        return BaseResponseData.success()
 
     @action(methods=['get'], detail=False, url_path="verbose_name/?")
     def verbose_name(self, request, pk=None):
@@ -163,7 +253,7 @@ class XadminViewSet(MtyModelViewSet):
             else:
                 value = key
             ret[key] = value
-        return JsonResponse(ret)
+        return BaseResponseData.success(data=ret)
 
     @action(methods=['get'], detail=False, url_path="list_display/?")
     def list_display(self, request, pk=None):
@@ -171,7 +261,8 @@ class XadminViewSet(MtyModelViewSet):
         ret = {}
         count = MAX_LIST_DISPLAY_COUNT
         for one_field in field_list:
-            if count < 0 or one_field.__class__.__name__ in ["OneToOneRel", "ManyToOneRel", "DateTimeField", "AutoField"]:
+            if count < 0 or one_field.__class__.__name__ in ["OneToOneRel", "ManyToOneRel", "DateTimeField",
+                                                             "AutoField"]:
                 key = one_field.name
                 if "verbose_name" in dir(one_field):
                     if key == "avatar" or "头像" in one_field.verbose_name:
@@ -183,27 +274,7 @@ class XadminViewSet(MtyModelViewSet):
             else:
                 print(one_field.name)
                 count -= 1
-        return JsonResponse(ret)
-
-    @action(methods=['get'], detail=False, url_path="list_display/?")
-    def list_display(self, request, pk=None):
-        field_list = self.serializer_class.Meta.model._meta.get_fields()
-        ret = {}
-        count = MAX_LIST_DISPLAY_COUNT
-        for one_field in field_list:
-            if count < 0 or one_field.__class__.__name__ in ["OneToOneRel", "ManyToOneRel", "DateTimeField", "AutoField"]:
-                key = one_field.name
-                if "verbose_name" in dir(one_field):
-                    if key == "avatar" or "头像" in one_field.verbose_name:
-                        pass
-                    else:
-                        ret[key] = {
-                            "show": False
-                        }
-            else:
-                print(one_field.name)
-                count -= 1
-        return JsonResponse(ret)
+        return BaseResponseData.success(data=ret)
 
     @action(methods=['get'], detail=False, url_path="display_order/?")
     def display_order(self, request, pk=None):
@@ -224,7 +295,7 @@ class XadminViewSet(MtyModelViewSet):
 
         field_list = self.serializer_class.Meta.model._meta.get_fields()
         table_order = [one.name for one in field_list]
-        return JsonResponse({
+        return BaseResponseData.success(data={
             'form_order': admin_order,
             'table_order': table_order,  # TODO list_display影响
         })
