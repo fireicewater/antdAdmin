@@ -1,10 +1,16 @@
-export default [
-  {path: '/', component: '@/pages/index'},
+import {IRoute} from "umi"
+
+
+export default <IRoute[]>[
   {
-    path: "/login", component: "@/pages/UserLogin",
-    headerRender: false,
-    menuRender: false,
-    menuHeaderRender: false,
-  }
+    path: '/user',
+    component: '@/pages/User',
+    wrappers: [
+      '@/layouts/TableLayout',
+    ],
+    menu: {
+      name: '用户', // 兼容此写法
+    },
+  },
 ];
 

@@ -6,7 +6,7 @@ export interface AuthParam {
 }
 
 export async function AccountLogin(params: AuthParam) {
-  return request('/xadmin/v1/login/account', {
+  return request('/login/account', {
     method: 'POST',
     data: params,
   });

@@ -6,19 +6,20 @@ from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import QuerySet
 from django.db.models.fields.files import ImageFieldFile, FieldFile
-from django.http import JsonResponse
+from django.http import Http404
 from django_filters import RangeFilter
 from django_filters.fields import DateRangeField
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters.widgets import RangeWidget
-from rest_framework import mixins
+from rest_framework import mixins, exceptions
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError, PermissionDenied
 from rest_framework.filters import SearchFilter
 from rest_framework.generics import GenericAPIView, get_object_or_404
+from rest_framework.response import Response
 from rest_framework.settings import api_settings
-from rest_framework.views import exception_handler, APIView
+from rest_framework.views import APIView, set_rollback
 from rest_framework.viewsets import ViewSetMixin
 
 from xadmin_api.pagination import CustomPageNumberPagination
@@ -51,7 +52,7 @@ class BaseResponseData(object):
         204: '删除数据成功。',
         400: '发出的请求有错误，服务器没有进行新建或修改数据的操作。',
         401: '用户没有权限（令牌、用户名、密码错误）。',
-        403: '用户得到授权，但是访问是被禁止的。',
+        403: '没有操作权限',
         404: '发出的请求针对的是不存在的记录，服务器没有进行操作。',
         406: '请求的格式不可得。',
         410: '请求的资源被永久删除，且不会再得到的。',
@@ -69,53 +70,53 @@ class BaseResponseData(object):
         self.errorMessage = kwargs["errorMessage"] if "errorMessage" in kwargs else None
         showType = kwargs.get("showType")
         if showType:
-            self.showType = showType.value
+            self.showType = showType
 
     @staticmethod
-    def success(**kwargs) -> JsonResponse:
-        data = BaseResponseData(success=True)
-        kwargs["safe"] = False
-        return JsonResponse(data, **kwargs)
+    def success(data: Any, **kwargs) -> Response:
+        if data:
+            response_data = BaseResponseData(success=True, data=data)
+            if isinstance(data, list):
+                kwargs["safe"] = False
+        else:
+            response_data = BaseResponseData(success=True)
+        return Response(response_data.__dict__, **kwargs)
 
     @staticmethod
-    def success(data: Any, **kwargs) -> JsonResponse:
-        response_data = BaseResponseData(success=True, data=data)
-        kwargs["safe"] = False
-        return JsonResponse(response_data.__dict__, **kwargs)
-
-    @staticmethod
-    def error(errorCode: int, **kwargs) -> JsonResponse:
-        message = BaseResponseData.__errors.get(errorCode)
-        data = BaseResponseData(success=False, errorCode=errorCode, errorMessage=message,
-                                showType=ShowTypeEnum["ERROR_MESSAGE"].value)
-        return JsonResponse(data, **kwargs)
-
-    @staticmethod
-    def error(errorCode: int, errorMessage: str, **kwargs) -> JsonResponse:
+    def error(errorCode: int, errorMessage: str = "", **kwargs) -> Response:
+        if errorMessage == "":
+            errorMessage = BaseResponseData.__errors[errorCode]
         data = BaseResponseData(success=False, errorCode=errorCode, errorMessage=errorMessage,
                                 showType=ShowTypeEnum["ERROR_MESSAGE"].value)
-        return JsonResponse(data, **kwargs)
-
-    @staticmethod
-    def error(errorCode: int, errorMessage: str, showType: ShowTypeEnum, **kwargs) -> JsonResponse:
-        data = BaseResponseData(success=False, errorCode=errorCode, errorMessage=errorMessage,
-                                showType=showType.value)
-        return JsonResponse(data, **kwargs)
-
-    @staticmethod
-    def error(errorCode: int, showType: ShowTypeEnum, **kwargs) -> JsonResponse:
-        message = BaseResponseData.__errors.get(errorCode)
-        data = BaseResponseData(success=False, errorCode=errorCode, errorMessage=message,
-                                showType=showType.value)
-        return JsonResponse(data, **kwargs)
+        return Response(data.__dict__, **kwargs)
 
 
 def custom_exception_handler(exc, context):
-    response = exception_handler(exc, context)
-    if isinstance(exc, ValidationError):
-        response.data = {"fields_errors": response.data}
+    error_message = ""
+    for key, values in exc.detail.items():
+        error_message += str(values[0])
+    # 处理404 错误
+    if isinstance(exc, Http404):
+        exc = exceptions.NotFound()
+        headers = {}
+        if getattr(exc, 'auth_header', None):
+            headers['WWW-Authenticate'] = exc.auth_header
+        if getattr(exc, 'wait', None):
+            headers['Retry-After'] = '%d' % exc.wait
+        if isinstance(exc.detail, (list, dict)):
+            data = exc.detail
+        else:
+            data = {'detail': exc.detail}
+        response = Response(data, status=exc.status_code, headers=headers)
+    elif isinstance(exc, exceptions.APIException):
+        response = BaseResponseData.error(422, error_message)
+    elif isinstance(exc, ValidationError):
+        response = BaseResponseData.error(422, error_message)
+    elif isinstance(exc, PermissionDenied):
+        response = BaseResponseData.error(403)
     else:
-        response.data = {"none_fields_errors": response.data}
+        response = BaseResponseData.error(500)
+    set_rollback()
     return response
 
 

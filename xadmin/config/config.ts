@@ -1,5 +1,16 @@
-import {defineConfig} from 'umi';
+import {defineConfig, IRoute} from 'umi';
 import router from "./router"
+
+
+const defaultRoutes: IRoute[] = [
+  {path: '/', component: '@/pages/index'},
+  {
+    path: "/login", component: "@/pages/UserLogin",
+    headerRender: false,
+    menuRender: false,
+    menuHeaderRender: false,
+  },
+]
 
 
 export default defineConfig({
@@ -8,12 +19,12 @@ export default defineConfig({
   },
   layout: {
     name: 'Ant Design',
-    locale: false,
     layout: 'side',
   },
-  routes: router,
+  routes: defaultRoutes.concat(router),
   fastRefresh: {},
-  proxy:{
+  locale: {},
+  proxy: {
     '/xadmin/v1': {
       'target': 'http://127.0.0.1:8000',
       'changeOrigin': true,

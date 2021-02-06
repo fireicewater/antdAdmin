@@ -1,9 +1,9 @@
 import {LockTwoTone, UserOutlined} from '@ant-design/icons';
 import {Button, Form, Input} from 'antd';
-import React, {useEffect, useRef, useState} from 'react';
+import React from 'react';
 import styles from './style.less';
-import {AccountLogin, AuthParam} from "@/services/auth"
-import {useRequest} from 'umi';
+import {AccountLogin} from "@/services/auth"
+import {history, useRequest} from 'umi';
 import {setAuthority} from "@/utils/auth"
 
 const Login = () => {
@@ -12,6 +12,7 @@ const Login = () => {
     manual: true,
     onSuccess: (data: { token: string }, params: any[]) => {
       setAuthority(data.token)
+      history.push("/index")
     }
   });
 
@@ -28,7 +29,7 @@ const Login = () => {
             },
           ]}
         >
-          <Input size="large" placeholder='请输入用户名' prefix={<UserOutlined
+          <Input size="large" placeholder='请输 入用户名' prefix={<UserOutlined
             style={{
               color: '#1890ff',
             }}

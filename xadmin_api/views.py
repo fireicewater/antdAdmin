@@ -3,7 +3,7 @@ import os
 
 import demjson
 from django.conf import settings
-from django.contrib.auth import login, authenticate, get_user_model, logout
+from django.contrib.auth import authenticate, get_user_model, logout
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import Permission, Group, User
 from django.contrib.contenttypes.models import ContentType
@@ -228,7 +228,7 @@ class UserViewSet(XadminViewSet):
     serializer_class = UserListSerializer
     queryset = User.objects.all().order_by('-pk')
     filter_class = UserFilter
-    search_fields = ["password", "username", "first_name", "last_name", "email"]
+    search_fields = ["username", "first_name", "last_name", "email"]
 
     def get_serializer_class(self):
         if self.action == "list":
