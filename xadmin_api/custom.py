@@ -93,8 +93,9 @@ class BaseResponseData(object):
 
 def custom_exception_handler(exc, context):
     error_message = ""
-    for key, values in exc.detail.items():
-        error_message += str(values[0])
+    if exc.detail:
+        for key, values in exc.detail.items():
+            error_message += str(values[0])
     # 处理404 错误
     if isinstance(exc, Http404):
         exc = exceptions.NotFound()
@@ -241,7 +242,7 @@ class XadminViewSet(MtyModelViewSet):
         log_save(user=request.user.username, request=self.request, flag="删除",
                  message=f'{self.serializer_class.Meta.model._meta.verbose_name}: {"".join(names)}被删除',
                  log_type=self.serializer_class.Meta.model._meta.model_name)
-        return BaseResponseData.success()
+        return BaseResponseData.success({})
 
     @action(methods=['get'], detail=False, url_path="verbose_name/?")
     def verbose_name(self, request, pk=None):

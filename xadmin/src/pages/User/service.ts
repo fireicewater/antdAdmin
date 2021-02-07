@@ -36,3 +36,9 @@ export async function addUser(params: Partial<UserType>) {
     data: params,
   });
 }
+
+export async function removeUser(id: number) {
+  return request(`/user/${id}`, {
+    method: 'DELETE',
+  });
+}
