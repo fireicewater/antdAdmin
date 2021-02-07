@@ -93,6 +93,8 @@ class BaseResponseData(object):
 
 def custom_exception_handler(exc, context):
     error_message = ""
+    # 事务回滚
+    set_rollback()
     if exc.detail:
         for key, values in exc.detail.items():
             error_message += str(values[0])
@@ -117,7 +119,6 @@ def custom_exception_handler(exc, context):
         response = BaseResponseData.error(403)
     else:
         response = BaseResponseData.error(500)
-    set_rollback()
     return response
 
 

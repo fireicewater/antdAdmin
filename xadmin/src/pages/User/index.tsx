@@ -1,6 +1,6 @@
 import React, {useMemo, useRef, useState} from 'react';
 import type {FormInstance} from 'antd';
-import {Button, message, Modal, Popconfirm} from 'antd';
+import {Button, message, Modal, Popconfirm, Space, Table} from 'antd';
 import {DeleteOutlined, EditOutlined, PlusOutlined} from '@ant-design/icons';
 import type {ActionType, ProColumns} from '@ant-design/pro-table';
 import ProTable from '@ant-design/pro-table';
@@ -125,7 +125,7 @@ export default () => {
           title="您确定要删除用户吗"
           placement="top"
           onConfirm={() => {
-            runRemove(record.id).then((data) => {
+            runRemove([record.id]).then((data) => {
               message.success("删除成功");
               actionRef.current?.reload()
             })
@@ -158,6 +158,26 @@ export default () => {
         rowKey="id"
         headerTitle="用户列表"
         request={queryUser}
+        rowSelection={{
+          selections: [Table.SELECTION_ALL, Table.SELECTION_INVERT],
+        }}
+        tableAlertOptionRender={({selectedRows, onCleanSelected}) => {
+          return (
+            <Space>
+              {/*<a>导出选中</a>*/}
+              <a onClick={() => {
+                const ids = selectedRows.map((row) => row.id);
+                runRemove(ids).then(data => {
+                  message.success("删除成功");
+                  onCleanSelected();
+                })
+              }}>批量删除</a>
+            </Space>
+          )
+        }}
+        options={{
+          search: true,
+        }}
         toolBarRender={() =>
           [
             <Button key="button" icon={<PlusOutlined/>} type="primary" onClick={() => setCreateModelVisible(true)}>
@@ -179,7 +199,6 @@ export default () => {
           formRef={updateForm}
           type="form"
           rowKey="id"
-          headerTitle="高级表格"
           onSubmit={(value) => {
             runUpdate(value, userForm.id as number).then(data => {
               message.success("修改成功");

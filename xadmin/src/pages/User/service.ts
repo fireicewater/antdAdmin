@@ -17,28 +17,30 @@ export interface UserType {
 export async function queryUser(params: {
   pageSize?: number;
   current?: number;
-},) {
+  [key: string]: any;
+}) {
   return await request("/user", {
     params
   })
 }
 
 export async function updateUser(params: Partial<UserType>, id: number) {
-  return request(`/user/${id}`, {
+  return await request(`/user/${id}`, {
     method: 'PUT',
     data: params,
   });
 }
 
 export async function addUser(params: Partial<UserType>) {
-  return request('/user', {
+  return await request('/user', {
     method: 'POST',
     data: params,
   });
 }
 
-export async function removeUser(id: number) {
-  return request(`/user/${id}`, {
+export async function removeUser(ids: number[]) {
+  const param = ids.join(",");
+  return await request(`/user/${param}`, {
     method: 'DELETE',
   });
 }

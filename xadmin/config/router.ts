@@ -10,6 +10,7 @@ export default <IRoute[]>[
     ],
     menu: {
       name: '用户', // 兼容此写法
+      icon: "UserOutlined"
     },
   },
 ];
