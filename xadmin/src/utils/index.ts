@@ -39,3 +39,15 @@ export function getFormColumns<T, U>(columns: ProColumns<T, U>[], exclude: strin
   })
   return copyColumns;
 }
+
+export const twoColumns = {
+  span: {
+    lg: 12,
+    md: 12,
+    xxl: 12,
+    xl: 12,
+    sm: 12,
+    xs: 24,
+  },
+};
+

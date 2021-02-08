@@ -4,9 +4,9 @@ import {Button, message, Modal, Popconfirm, Space, Table} from 'antd';
 import {DeleteOutlined, EditOutlined, PlusOutlined} from '@ant-design/icons';
 import type {ActionType, ProColumns} from '@ant-design/pro-table';
 import ProTable from '@ant-design/pro-table';
-import {addUser, queryUser, removeUser, updateUser, UserType} from "./service"
+import {addUser, queryUser, removeUser, updateUser, UserInterface} from "./service"
 import {useRequest,} from "umi"
-import {getFormColumns} from "@/utils"
+import {getFormColumns, twoColumns} from "@/utils"
 
 const menus: {
   name: React.ReactNode;
@@ -20,11 +20,29 @@ export default () => {
   const [updateModelVisible, setUpdateModelVisible] = useState<boolean>(false);
   const updateForm = useRef<FormInstance>();
   const createFrom = useRef<FormInstance>();
-  const [userForm, setUserForm] = useState<Partial<UserType>>({});
+  const [userForm, setUserForm] = useState<Partial<UserInterface>>({});
   const {loading: updateLoading, run: runUpdate} = useRequest(updateUser, {manual: true});
   const {loading: createLoading, run: runCreate} = useRequest(addUser, {manual: true});
   const {loading: removeLoading, run: runRemove} = useRequest(removeUser, {manual: true});
-  const columns: ProColumns<UserType, "boolType">[] = [
+  const handleUpdate: (params: Partial<UserInterface>) => void = async (params) => {
+    await runUpdate(params, userForm.id as number);
+    message.success("修改成功");
+    setUpdateModelVisible(false);
+    setUserForm({});
+    actionRef.current?.reload();
+  }
+  const handleCreate: (params: Partial<UserInterface>) => void = async (params) => {
+    await runCreate(params);
+    message.success("新增成功");
+    setCreateModelVisible(false);
+    actionRef.current?.reload();
+  }
+  const handleRemove: (params: UserInterface[]) => void = async (params) => {
+    await runRemove(params.map(x => x.id));
+    message.success("删除成功");
+  }
+
+  const columns: ProColumns<UserInterface, "boolType" | "foreignKeyType">[] = [
     {
       title: "id",
       dataIndex: 'id',
@@ -82,6 +100,20 @@ export default () => {
       valueType: 'dateTime',
       search: false
     },
+    // {
+    //   title: '权限',
+    //   dataIndex: 'user_permissions',
+    //   valueType: 'foreignKeyType',
+    //   fieldProps: {
+    //     selectValue: {
+    //       key: "test",
+    //       values: [
+    //         {id: 1, test: "123"},
+    //         {id: 2, test: "456"}
+    //       ]
+    //     }
+    //   }
+    // },
     {
       title: '加入日期',
       dataIndex: 'date_joined',
@@ -124,11 +156,9 @@ export default () => {
         <Popconfirm
           title="您确定要删除用户吗"
           placement="top"
-          onConfirm={() => {
-            runRemove([record.id]).then((data) => {
-              message.success("删除成功");
-              actionRef.current?.reload()
-            })
+          onConfirm={async () => {
+            await handleRemove([record]);
+            actionRef.current?.reload()
           }}
           okButtonProps={{loading: removeLoading}}
           key={"delete" + index}
@@ -144,15 +174,15 @@ export default () => {
       ]
     }
   ];
-  const updateColumns = useMemo<ProColumns<UserType, "boolType">[]>(() => {
-    return getFormColumns<UserType, "boolType">(columns, ["password"]);
+  const updateColumns = useMemo<ProColumns<UserInterface, "boolType" | "foreignKeyType">[]>(() => {
+    return getFormColumns<UserInterface, "boolType" | "foreignKeyType">(columns, ["password"]);
   }, columns)
-  const createColumns = useMemo<ProColumns<UserType, "boolType">[]>(() => {
-    return getFormColumns<UserType, "boolType">(columns);
+  const createColumns = useMemo<ProColumns<UserInterface, "boolType" | "foreignKeyType">[]>(() => {
+    return getFormColumns<UserInterface, "boolType" | "foreignKeyType">(columns);
   }, columns);
   return (
     <>
-      < ProTable<UserType, Record<string, any>, 'boolType'>
+      < ProTable<UserInterface, Partial<UserInterface>, "boolType" | "foreignKeyType">
         columns={columns}
         actionRef={actionRef}
         rowKey="id"
@@ -165,12 +195,9 @@ export default () => {
           return (
             <Space>
               {/*<a>导出选中</a>*/}
-              <a onClick={() => {
-                const ids = selectedRows.map((row) => row.id);
-                runRemove(ids).then(data => {
-                  message.success("删除成功");
-                  onCleanSelected();
-                })
+              <a onClick={async () => {
+                await handleRemove(selectedRows);
+                onCleanSelected();
               }}>批量删除</a>
             </Space>
           )
@@ -194,19 +221,12 @@ export default () => {
         onCancel={() => setUpdateModelVisible(false)}
         footer={null}
       >
-        <ProTable<UserType, Record<string, any>, 'boolType'>
+        <ProTable<UserInterface, Partial<UserInterface>, "boolType" | "foreignKeyType">
           columns={updateColumns}
           formRef={updateForm}
           type="form"
           rowKey="id"
-          onSubmit={(value) => {
-            runUpdate(value, userForm.id as number).then(data => {
-              message.success("修改成功");
-              setUpdateModelVisible(false);
-              setUserForm({});
-              actionRef.current?.reload()
-            })
-          }}
+          onSubmit={handleUpdate}
           onReset={() => {
             updateForm.current?.resetFields();
           }}
@@ -227,21 +247,16 @@ export default () => {
         onCancel={() => setCreateModelVisible(false)}
         footer={null}
       >
-        <ProTable<UserType, Record<string, any>, 'boolType'>
+        <ProTable<UserInterface, Partial<UserInterface>, "boolType" | "foreignKeyType">
           columns={createColumns}
           type="form"
           rowKey="id"
           formRef={createFrom}
-          onSubmit={(value) => {
-            runCreate(value).then(data => {
-              message.success("新增成功");
-              setCreateModelVisible(false);
-              actionRef.current?.reload()
-            })
-          }}
+          onSubmit={handleCreate}
+          search={twoColumns}
           form={
             {
-              labelCol: {span: 6},
+              labelCol: {span: 8},
               labelAlign: 'left',
             }
           }

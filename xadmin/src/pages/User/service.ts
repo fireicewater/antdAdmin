@@ -1,6 +1,6 @@
 import {request} from 'umi';
 
-export interface UserType {
+export interface UserInterface {
   id: number
   username: string
   password: string
@@ -11,7 +11,8 @@ export interface UserType {
   is_active: boolean
   date_joined: Date
   last_login: Date
-  is_superuser: string
+  is_superuser: string,
+  user_permissions: []
 }
 
 export async function queryUser(params: {
@@ -24,14 +25,14 @@ export async function queryUser(params: {
   })
 }
 
-export async function updateUser(params: Partial<UserType>, id: number) {
+export async function updateUser(params: Partial<UserInterface>, id: number) {
   return await request(`/user/${id}`, {
     method: 'PUT',
     data: params,
   });
 }
 
-export async function addUser(params: Partial<UserType>) {
+export async function addUser(params: Partial<UserInterface>) {
   return await request('/user', {
     method: 'POST',
     data: params,
