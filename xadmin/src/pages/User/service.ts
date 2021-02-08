@@ -1,7 +1,8 @@
 import {request} from 'umi';
+import {BaseInterface, QueryParams} from "@/utils"
+import {PermissionInterface} from "@/pages/Permission/service"
 
-export interface UserInterface {
-  id: number
+export interface UserInterface extends BaseInterface {
   username: string
   password: string
   first_name: string
@@ -12,14 +13,10 @@ export interface UserInterface {
   date_joined: Date
   last_login: Date
   is_superuser: string,
-  user_permissions: []
+  user_permissions: PermissionInterface[]
 }
 
-export async function queryUser(params: {
-  pageSize?: number;
-  current?: number;
-  [key: string]: any;
-}) {
+export async function queryUser(params: QueryParams) {
   return await request("/user", {
     params
   })

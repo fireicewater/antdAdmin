@@ -1,6 +1,7 @@
-from xadmin_api import views
 from django.urls import re_path, include, path
 from rest_framework.routers import DefaultRouter
+
+from xadmin_api import views
 from xadmin_api.views import LoginView, CurrentUserView, UserSendCaptchaView, \
     UploadView, MenuView, UserChangePasswordView, UserListChangePasswordView, UserLogoutView
 from xadmin_api.views import TyAdminSysLogViewSet, TyAdminEmailVerifyRecordViewSet
@@ -16,7 +17,7 @@ router.register('ty_admin_email_verify_record', TyAdminEmailVerifyRecordViewSet)
 
 urlpatterns = [
     re_path('^', include(router.urls)),
-    path('login/account', LoginView.as_view(), name='user_login'),
+    path('login/account', LoginView.as_view(), name='   user_login'),
     path('currentUser', CurrentUserView.as_view(), name='user_current_user'),
     path('logout', UserLogoutView.as_view(), name='logout'),
     path('sendEmailCaptcha', UserSendCaptchaView.as_view(), name='user_send_captcha'),

@@ -6,15 +6,11 @@ import type {ActionType, ProColumns} from '@ant-design/pro-table';
 import ProTable from '@ant-design/pro-table';
 import {addUser, queryUser, removeUser, updateUser, UserInterface} from "./service"
 import {useRequest,} from "umi"
-import {getFormColumns, twoColumns} from "@/utils"
-
-const menus: {
-  name: React.ReactNode;
-  key: string;
-}[] = []
+import {getFormColumns} from "@/utils"
 
 
 export default () => {
+  //处理通用逻辑
   const actionRef = useRef<ActionType>();
   const [createModelVisible, setCreateModelVisible] = useState<boolean>(false);
   const [updateModelVisible, setUpdateModelVisible] = useState<boolean>(false);
@@ -41,6 +37,7 @@ export default () => {
     await runRemove(params.map(x => x.id));
     message.success("删除成功");
   }
+  //处理外键相关
 
   const columns: ProColumns<UserInterface, "boolType" | "foreignKeyType">[] = [
     {
@@ -253,7 +250,6 @@ export default () => {
           rowKey="id"
           formRef={createFrom}
           onSubmit={handleCreate}
-          search={twoColumns}
           form={
             {
               labelCol: {span: 8},
