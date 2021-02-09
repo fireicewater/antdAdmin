@@ -51,10 +51,10 @@ export function getUpdateRecord<T, U>(columns: ProColumns<T, U | "foreignKeyType
   const keys = columns.filter(x => (x.valueType === "foreignKeyType")).map(x => x.dataIndex);
   for (let key in copyRecord) {
     if (keys.includes(key)) {
-      let tempArray: number[] = [];
+      let tempArray: number[] | number;
       let recordElement = getProperty(copyRecord, key) as unknown as selectValueType | selectValueType[]
       if ("id" in recordElement) {
-        tempArray = [recordElement.id]
+        tempArray = recordElement.id
       } else if (recordElement instanceof Array) {
         tempArray = recordElement.map(x => x.id);
       }
