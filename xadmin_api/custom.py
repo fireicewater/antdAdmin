@@ -76,8 +76,6 @@ class BaseResponseData(object):
     def success(data: Any, **kwargs) -> Response:
         if data:
             response_data = BaseResponseData(success=True, data=data)
-            if isinstance(data, list):
-                kwargs["safe"] = False
         else:
             response_data = BaseResponseData(success=True)
         return Response(response_data.__dict__, **kwargs)
@@ -95,7 +93,7 @@ def custom_exception_handler(exc, context):
     error_message = ""
     # 事务回滚
     set_rollback()
-    if exc.detail:
+    if hasattr(exc, "detail"):
         for key, values in exc.detail.items():
             error_message += str(values[0])
     # 处理404 错误

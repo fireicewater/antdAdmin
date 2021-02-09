@@ -1,4 +1,4 @@
-import React, {useMemo, useRef, useState} from 'react';
+import React, {FC, useMemo, useRef, useState} from 'react';
 import type {FormInstance} from 'antd';
 import {Button, message, Modal, Popconfirm, Space, Table} from 'antd';
 import {DeleteOutlined, EditOutlined, PlusOutlined} from '@ant-design/icons';
@@ -6,10 +6,17 @@ import type {ActionType, ProColumns} from '@ant-design/pro-table';
 import ProTable from '@ant-design/pro-table';
 import {addUser, queryUser, removeUser, updateUser, UserInterface} from "./service"
 import {useRequest,} from "umi"
-import {getFormColumns} from "@/utils"
+import {getFormColumns, getUpdateRecord} from "@/utils"
+import {queryPermission} from "@/pages/Permission/service"
 
 
-export default () => {
+const requireColumns: string[] = [
+  "username",
+  "password"
+]
+
+
+const table: FC<void> = () => {
   //处理通用逻辑
   const actionRef = useRef<ActionType>();
   const [createModelVisible, setCreateModelVisible] = useState<boolean>(false);
@@ -21,6 +28,7 @@ export default () => {
   const {loading: createLoading, run: runCreate} = useRequest(addUser, {manual: true});
   const {loading: removeLoading, run: runRemove} = useRequest(removeUser, {manual: true});
   const handleUpdate: (params: Partial<UserInterface>) => void = async (params) => {
+    console.log(params)
     await runUpdate(params, userForm.id as number);
     message.success("修改成功");
     setUpdateModelVisible(false);
@@ -28,6 +36,7 @@ export default () => {
     actionRef.current?.reload();
   }
   const handleCreate: (params: Partial<UserInterface>) => void = async (params) => {
+    console.log(params);
     await runCreate(params);
     message.success("新增成功");
     setCreateModelVisible(false);
@@ -38,6 +47,7 @@ export default () => {
     message.success("删除成功");
   }
   //处理外键相关
+  const {loading: PermissionLoading, data: Permission} = useRequest(() => queryPermission({all: 1}))
 
   const columns: ProColumns<UserInterface, "boolType" | "foreignKeyType">[] = [
     {
@@ -97,20 +107,15 @@ export default () => {
       valueType: 'dateTime',
       search: false
     },
-    // {
-    //   title: '权限',
-    //   dataIndex: 'user_permissions',
-    //   valueType: 'foreignKeyType',
-    //   fieldProps: {
-    //     selectValue: {
-    //       key: "test",
-    //       values: [
-    //         {id: 1, test: "123"},
-    //         {id: 2, test: "456"}
-    //       ]
-    //     }
-    //   }
-    // },
+    {
+      title: '权限',
+      dataIndex: 'user_permissions',
+      valueType: 'foreignKeyType',
+      fieldProps: {
+        selectValue: Permission,
+        many: true
+      }
+    },
     {
       title: '加入日期',
       dataIndex: 'date_joined',
@@ -148,7 +153,8 @@ export default () => {
       render: (text, record, index, action) => [
         <Button icon={<EditOutlined/>} type="primary" key={"update" + index} onClick={() => {
           setUpdateModelVisible(true);
-          setUserForm(record);
+          const updateRecord = getUpdateRecord(columns, record);
+          setUserForm(updateRecord);
         }}/>,
         <Popconfirm
           title="您确定要删除用户吗"
@@ -172,10 +178,13 @@ export default () => {
     }
   ];
   const updateColumns = useMemo<ProColumns<UserInterface, "boolType" | "foreignKeyType">[]>(() => {
-    return getFormColumns<UserInterface, "boolType" | "foreignKeyType">(columns, ["password"]);
+    const formColumns = getFormColumns<UserInterface, "boolType" | "foreignKeyType">(columns, requireColumns);
+    //删除password
+    formColumns.splice(formColumns.findIndex(item => item.dataIndex === "password"), 1)
+    return formColumns;
   }, columns)
   const createColumns = useMemo<ProColumns<UserInterface, "boolType" | "foreignKeyType">[]>(() => {
-    return getFormColumns<UserInterface, "boolType" | "foreignKeyType">(columns);
+    return getFormColumns<UserInterface, "boolType" | "foreignKeyType">(columns, requireColumns);
   }, columns);
   return (
     <>
@@ -217,6 +226,7 @@ export default () => {
         confirmLoading={updateLoading}
         onCancel={() => setUpdateModelVisible(false)}
         footer={null}
+        width={600}
       >
         <ProTable<UserInterface, Partial<UserInterface>, "boolType" | "foreignKeyType">
           columns={updateColumns}
@@ -232,6 +242,7 @@ export default () => {
               initialValues: userForm,
               labelCol: {span: 6},
               labelAlign: 'left',
+              layout: "horizontal",
             }
           }
         />
@@ -243,6 +254,7 @@ export default () => {
         confirmLoading={createLoading}
         onCancel={() => setCreateModelVisible(false)}
         footer={null}
+        width={600}
       >
         <ProTable<UserInterface, Partial<UserInterface>, "boolType" | "foreignKeyType">
           columns={createColumns}
@@ -250,14 +262,26 @@ export default () => {
           rowKey="id"
           formRef={createFrom}
           onSubmit={handleCreate}
+          search={{
+            span: {
+              lg: 12,
+              md: 12,
+              xxl: 12,
+              xl: 12,
+              sm: 12,
+              xs: 24,
+            }
+          }}
           form={
             {
-              labelCol: {span: 8},
+              labelCol: {span: 6},
               labelAlign: 'left',
-            }
-          }
+              layout: "horizontal",
+            }}
         />
       </Modal>
     </>
   )
 }
+
+export default table;

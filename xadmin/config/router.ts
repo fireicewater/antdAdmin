@@ -13,5 +13,16 @@ export default <IRoute[]>[
       icon: "UserOutlined"
     },
   },
+  {
+    path: '/permission',
+    component: '@/pages/Permission',
+    wrappers: [
+      '@/layouts/TableLayout',
+    ],
+    menu: {
+      name: '权限', // 兼容此写法
+      icon: "UserOutlined"
+    },
+  },
 ];
 

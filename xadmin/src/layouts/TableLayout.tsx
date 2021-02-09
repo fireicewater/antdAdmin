@@ -1,6 +1,8 @@
 import React, {FC, useContext} from 'react';
 import ProProvider from '@ant-design/pro-provider';
-import {Select, SelectProps, Space, Switch, Tag} from 'antd';
+import {Select, Space, Switch, Tag} from 'antd';
+import {selectValueType} from "@/utils"
+
 
 //TODO 后续加入登陆状态判断 现在想加入统一context
 const APP: FC = (props) => {
@@ -15,35 +17,53 @@ const APP: FC = (props) => {
               return <Switch checked={text} disabled={true}/>
             },
             renderFormItem: (text, props, element) => {
-
               return <Switch checked={text} onChange={props.fieldProps.onChange}/>
             }
           },
           foreignKeyType: {
-            render: (text: [], props) => {
-              return (
-                <Space direction="horizontal" wrap={true}>
-                  {
-                    text.map(x => (<Tag>{x}</Tag>))
-                  }
-                </Space>
-              );
+            render: (text: selectValueType[] | selectValueType, props, element) => {
+              if (text instanceof Array) {
+                return (
+                  <Space direction="horizontal" wrap={true}>
+                    {
+                      text.map((x, index) => (<Tag key={index}>{x.ty_options_display_txt}</Tag>))
+                    }
+                  </Space>
+                );
+              } else if (text.ty_options_display_txt) {
+                return (<span>text.ty_options_display_txt</span>)
+              }
+              return element;
             },
-            renderFormItem: function (text, props, element) {
+            renderFormItem: function (_, props, element) {
+              console.log(props);
               const {Option} = Select;
-              const {onChange, selectValue, value} = props.fieldProps as {
-                selectValue: {
-                  id: number;
-                  ty_options_display_txt: string;
-                }[],
+              const {selectValue, many, value, onChange}: {
+                selectValue: selectValueType[],
+                many: boolean,
                 value: any,
-                onChange: Extract<SelectProps<any>, "onChange">
-              };
+                onChange: (...rest: any[]) => void;
+              } = props.fieldProps;
               if (selectValue) {
-                return (<Select mode="multiple" style={{width: '100%'}} placeholder="请选择" optionFilterProp="label"
-                                onChange={onChange} value={value}>
-                  {selectValue.map((x, index) => <Option key={index} value={x.id}
-                                                         label={x["ty_options_display_txt"]}>{x["ty_options_display_txt"]}</Option>)}
+                //判断是否可以多选
+                if (many) {
+                  return (<Select mode="multiple" style={{width: '100%'}} placeholder="请选择"
+                                  optionFilterProp="label"
+                                  onChange={onChange} value={value}>
+                    {selectValue.map((x, index) => <Option key={index} value={x.id}
+                                                           label={x["ty_options_display_txt"]}>{x["ty_options_display_txt"]}</Option>)}
+                  </Select>)
+                }
+                return (<Select style={{width: '100%'}} placeholder="请选择"
+                                onChange={onChange}
+                                showSearch value={value}
+                                filterOption={(input, option) =>
+                                  option?.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                                }
+
+                >
+                  {selectValue.map((x, index) => <Option key={index}
+                                                         value={x.id}>{x["ty_options_display_txt"]}</Option>)}
                 </Select>)
               }
               return element;

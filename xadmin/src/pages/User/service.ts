@@ -1,6 +1,5 @@
 import {request} from 'umi';
-import {BaseInterface, QueryParams} from "@/utils"
-import {PermissionInterface} from "@/pages/Permission/service"
+import {BaseInterface, QueryParams, selectValueType} from "@/utils"
 
 export interface UserInterface extends BaseInterface {
   username: string
@@ -13,7 +12,7 @@ export interface UserInterface extends BaseInterface {
   date_joined: Date
   last_login: Date
   is_superuser: string,
-  user_permissions: PermissionInterface[]
+  user_permissions: selectValueType[] | number[]
 }
 
 export async function queryUser(params: QueryParams) {
