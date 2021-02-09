@@ -1,16 +1,11 @@
 import {request} from 'umi';
-import {BaseInterface, QueryParams} from "@/utils"
-
-export interface ContentTypeInterface extends BaseInterface {
-  app_label: string;
-  model: string;
-}
+import {BaseInterface, QueryParams, selectValueType} from "@/utils"
 
 
 export interface PermissionInterface extends BaseInterface {
   name: string;
   codename: string;
-  content_type: ContentTypeInterface
+  content_type: selectValueType | number
 }
 
 

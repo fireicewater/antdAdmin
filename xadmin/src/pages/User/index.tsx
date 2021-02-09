@@ -197,9 +197,12 @@ const table: FC<void> = () => {
         rowSelection={{
           selections: [Table.SELECTION_ALL, Table.SELECTION_INVERT],
         }}
+        search={{
+          labelWidth: "auto"
+        }}
         tableAlertOptionRender={({selectedRows, onCleanSelected}) => {
           return (
-            <Space>
+            <Space>¬
               {/*<a>导出选中</a>*/}
               <a onClick={async () => {
                 await handleRemove(selectedRows);

@@ -24,5 +24,16 @@ export default <IRoute[]>[
       icon: "UserOutlined"
     },
   },
+  {
+    path: '/group',
+    component: '@/pages/Group',
+    wrappers: [
+      '@/layouts/TableLayout',
+    ],
+    menu: {
+      name: '组', // 兼容此写法
+      icon: "UserOutlined"
+    },
+  },
 ];
 

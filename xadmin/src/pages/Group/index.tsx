@@ -4,25 +4,19 @@ import {Button, message, Modal, Popconfirm, Space, Table} from 'antd';
 import {DeleteOutlined, EditOutlined, PlusOutlined} from '@ant-design/icons';
 import type {ActionType, ProColumns} from '@ant-design/pro-table';
 import ProTable from '@ant-design/pro-table';
-import {
-  addPermission,
-  PermissionInterface,
-  queryContentType,
-  queryPermission,
-  removePermission,
-  updatePermission
-} from "./service"
 import {useRequest,} from "umi"
 import {getFormColumns, getUpdateRecord} from "@/utils"
+import {addGroup, GroupInterface, queryGroup, removeGroup, updateGroup} from "./service"
+import {queryPermission} from "@/pages/Permission/service";
 
 
 const requireColumns: string[] = [
   "name",
-  "code",
-  "content_type"
+  "permissions"
 ]
 
-const foreignKeys: string[] = ["content_type"]
+
+const foreignKeys: string[] = []
 
 const table: FC<void> = () => {
   const actionRef = useRef<ActionType>();
@@ -30,33 +24,33 @@ const table: FC<void> = () => {
   const [updateModelVisible, setUpdateModelVisible] = useState<boolean>(false);
   const updateForm = useRef<FormInstance>();
   const createFrom = useRef<FormInstance>();
-  const [userForm, setUserForm] = useState<Partial<PermissionInterface>>({});
-  const {loading: updateLoading, run: runUpdate} = useRequest(updatePermission, {manual: true});
-  const {loading: createLoading, run: runCreate} = useRequest(addPermission, {manual: true});
-  const {loading: removeLoading, run: runRemove} = useRequest(removePermission, {manual: true});
+  const [userForm, setUserForm] = useState<Partial<GroupInterface>>({});
+  const {loading: updateLoading, run: runUpdate} = useRequest(updateGroup, {manual: true});
+  const {loading: createLoading, run: runCreate} = useRequest(addGroup, {manual: true});
+  const {loading: removeLoading, run: runRemove} = useRequest(removeGroup, {manual: true});
 
-  const handleUpdate: (params: Partial<PermissionInterface>) => void = async (params) => {
+  const handleUpdate: (params: Partial<GroupInterface>) => void = async (params) => {
     await runUpdate(params, userForm.id as number);
     message.success("修改成功");
     setUpdateModelVisible(false);
     setUserForm({});
     actionRef.current?.reload();
   }
-  const handleCreate: (params: Partial<PermissionInterface>) => void = async (params) => {
+  const handleCreate: (params: Partial<GroupInterface>) => void = async (params) => {
     await runCreate(params);
     message.success("新增成功");
     setCreateModelVisible(false);
     actionRef.current?.reload();
   }
-  const handleRemove: (params: PermissionInterface[]) => void = async (params) => {
+
+  const handleRemove: (params: GroupInterface[]) => void = async (params) => {
     await runRemove(params.map(x => x.id));
     message.success("删除成功");
   }
 
   //处理外键相关
-  const {loading: ContentTypeLoading, data: ContentType} = useRequest(() => queryContentType({all: 1}))
-
-  const columns: ProColumns<PermissionInterface, "boolType" | "foreignKeyType">[] = [
+  const {loading: PermissionLoading, data: Permission} = useRequest(() => queryPermission({all: 1}))
+  const columns: ProColumns<GroupInterface, "boolType" | "foreignKeyType">[] = [
     {
       title: "id",
       dataIndex: 'id',
@@ -64,18 +58,15 @@ const table: FC<void> = () => {
     },
     {
       title: "名称",
-      dataIndex: "name",
+      dataIndex: 'name',
+      valueType: 'text',
     },
     {
-      title: "code",
-      dataIndex: "codename",
-    },
-    {
-      title: 'content_type',
-      dataIndex: 'content_type',
+      title: '权限',
+      dataIndex: 'permissions',
       valueType: 'foreignKeyType',
       fieldProps: {
-        selectValue: ContentType,
+        selectValue: Permission,
         many: true
       }
     },
@@ -110,23 +101,20 @@ const table: FC<void> = () => {
       ]
     }
   ]
-
-  const updateColumns = useMemo<ProColumns<PermissionInterface, "boolType" | "foreignKeyType">[]>(() => {
-    return getFormColumns<PermissionInterface, "boolType" | "foreignKeyType">(columns, requireColumns, foreignKeys);
-    //删除password
+  const updateColumns = useMemo<ProColumns<GroupInterface, "boolType" | "foreignKeyType">[]>(() => {
+    return getFormColumns<GroupInterface, "boolType" | "foreignKeyType">(columns, requireColumns, foreignKeys);
   }, columns)
-  const createColumns = useMemo<ProColumns<PermissionInterface, "boolType" | "foreignKeyType">[]>(() => {
-    return getFormColumns<PermissionInterface, "boolType" | "foreignKeyType">(columns, requireColumns, foreignKeys);
+  const createColumns = useMemo<ProColumns<GroupInterface, "boolType" | "foreignKeyType">[]>(() => {
+    return getFormColumns<GroupInterface, "boolType" | "foreignKeyType">(columns, requireColumns, foreignKeys);
   }, columns);
-
   return (
     <>
-      < ProTable<PermissionInterface, Partial<PermissionInterface>, "boolType" | "foreignKeyType">
+      < ProTable<GroupInterface, Partial<GroupInterface>, "boolType" | "foreignKeyType">
         columns={columns}
         actionRef={actionRef}
         rowKey="id"
         headerTitle="用户列表"
-        request={queryPermission}
+        request={queryGroup}
         search={{
           labelWidth: "auto"
         }}
@@ -164,7 +152,7 @@ const table: FC<void> = () => {
         footer={null}
         width={600}
       >
-        <ProTable<PermissionInterface, Partial<PermissionInterface>, "boolType" | "foreignKeyType">
+        <ProTable<GroupInterface, Partial<GroupInterface>, "boolType" | "foreignKeyType">
           columns={updateColumns}
           formRef={updateForm}
           type="form"
@@ -192,7 +180,7 @@ const table: FC<void> = () => {
         footer={null}
         width={600}
       >
-        <ProTable<PermissionInterface, Partial<PermissionInterface>, "boolType" | "foreignKeyType">
+        <ProTable<GroupInterface, Partial<GroupInterface>, "boolType" | "foreignKeyType">
           columns={createColumns}
           type="form"
           rowKey="id"
