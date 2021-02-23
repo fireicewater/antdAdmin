@@ -2,23 +2,19 @@ import {LockTwoTone, UserOutlined} from '@ant-design/icons';
 import {Button, Form, Input} from 'antd';
 import React from 'react';
 import styles from './style.less';
-import {AccountLogin} from "@/services/auth"
-import {history, useRequest} from 'umi';
-import {setAuthority} from "@/utils/auth"
+import {history, useModel} from 'umi';
+import {AuthParam} from "@/services/auth";
 
 const Login = () => {
   const [loginAccountForm] = Form.useForm();
-  const {run: handleAccountSubmit} = useRequest(AccountLogin, {
-    manual: true,
-    onSuccess: (data: { token: string }, params: any[]) => {
-      setAuthority(data.token)
-      history.push("/index")
-    }
-  });
+  const {login} = useModel("user", model => ({login: model.login}))
 
   return (
     <div className={styles.main}>
-      <Form form={loginAccountForm} onFinish={handleAccountSubmit}>
+      <Form form={loginAccountForm} onFinish={async (params: AuthParam) => {
+        await login(params);
+        history.push("/index")
+      }}>
         <Form.Item
           style={{marginBottom: 24}}
           name="userName"

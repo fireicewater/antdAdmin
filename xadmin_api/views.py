@@ -83,8 +83,12 @@ class LoginView(MtyCustomExecView):
         if user is not None:
             payload = jwt_payload_handler(user)
             token = jwt_encode_handler(payload)
+            serializer = UserListSerializer(user)
+            expireTime = settings.JWT_AUTH["JWT_EXPIRATION_DELTA"]
             return BaseResponseData.success(data={
-                "token": token
+                "token": token,
+                "user": serializer.data,
+                "expireTime": expireTime.seconds
             })
         else:
             raise ValidationError({"password": ["密码错误"]})
@@ -170,33 +174,6 @@ class UserChangePasswordView(MtyCustomExecView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(dict(code=200, detail='修改成功'))
-
-
-class UserListChangePasswordView(MtyCustomExecView):
-
-    def post(self, request, *args, **kwargs):
-        current_username = self.request.data["username"]
-        change_password = self.request.data["password"]
-        change_re_password = self.request.data["re_password"]
-        if change_password != change_re_password:
-            raise ValidationError({"password": ["两次密码不可以不一致"]})
-        try:
-            cur_user = SysUser.objects.get(username=current_username)
-            password = make_password(change_re_password)
-            cur_user.password = password
-            cur_user.save()
-            log_save(user=request.user.username, request=self.request, flag="修改",
-                     message=f'用户: {cur_user.username}密码被修改', log_type="user")
-        except SysUser.DoesNotExist:
-            raise ValidationError({"username": ["用户名不存在"]})
-        ret_info = {
-            "retcode": 200,
-            "retmsg": "Save Success"
-        }
-        res = {
-            'retInfos': ret_info,
-        }
-        return JsonResponse(res)
 
 
 class PermissionViewSet(XadminViewSet):

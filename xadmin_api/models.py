@@ -41,6 +41,6 @@ class TyAdminEmailVerifyRecord(models.Model):
 class CustomUser(AbstractUser):
     class Meta:
         permissions = [
-            ("change_password_user", "Can change password user")
+            ("change_password_customuser", "Can change password user")
         ]
         db_table = "auth_user"

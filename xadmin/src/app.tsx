@@ -1,6 +1,6 @@
 import {RequestConfig,} from 'umi';
 import {RequestInterceptor, RequestOptionsInit} from "umi-request"
-import {getAuthority} from "@/utils/auth"
+import {getLocaleItem} from "@/utils/storage"
 
 const tokenRequestInterceptor: RequestInterceptor
   = (url: string, options: RequestOptionsInit) => {
@@ -9,8 +9,10 @@ const tokenRequestInterceptor: RequestInterceptor
   //如果不是登录的
   if (!loginregex.test(url)) {
     let hearders = optionsCopy.headers
-    let token = getAuthority();
-    hearders = Object.assign(hearders, {"Authorization": `JWT ${token}`})
+    let token = getLocaleItem("user");
+    if (token) {
+      hearders = Object.assign(hearders, {"Authorization": `JWT ${token}`})
+    }
     optionsCopy.headers = hearders;
   }
   return {

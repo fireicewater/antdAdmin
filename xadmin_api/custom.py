@@ -13,7 +13,8 @@ from django_filters.fields import DateRangeField
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters.widgets import RangeWidget
 from rest_framework import mixins, exceptions
-from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+from rest_framework import permissions
+from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError, PermissionDenied
 from rest_framework.filters import SearchFilter
@@ -98,8 +99,12 @@ def custom_exception_handler(exc, context):
     # 事务回滚
     set_rollback()
     if hasattr(exc, "detail"):
-        for key, values in exc.detail.items():
-            error_message += str(values[0])
+        detail = exc.detail
+        if isinstance(detail, list):
+            for key, values in exc.detail.items():
+                error_message += str(values[0])
+        else:
+            error_message = detail
     # 处理404 错误
     if isinstance(exc, Http404):
         exc = exceptions.NotFound()
@@ -154,10 +159,41 @@ class MtyCustomExecView(APIView):
         return custom_exception_handler
 
 
+class CustomPermissions(permissions.DjangoModelPermissions):
+    action_map = {
+        "list": '%(app_label)s.view_%(model_name)s',
+        "retrieve": '%(app_label)s.view_%(model_name)s',
+        "create": '%(app_label)s.add_%(model_name)s',
+        "update": '%(app_label)s.change_%(model_name)s',
+        "destroy": '%(app_label)s.delete_%(model_name)s',
+    }
+
+    def get_action_permissions(self, action, model_cls):
+        kwargs = {
+            'app_label': model_cls._meta.app_label,
+            'action': action,
+            'model_name': model_cls._meta.model_name,
+        }
+        """
+        Given a model and an HTTP method, return the list of permission
+        codes that the user is required to have.
+        """
+        perm = self.action_map.get(action, '%(app_label)s.%(action)s_%(model_name)s')
+        return perm % kwargs
+
+    def has_permission(self, request, view):
+        if not request.user or (
+                not request.user.is_authenticated and self.authenticated_users_only):
+            return False
+        queryset = self._queryset(view)
+        permissions = self.get_action_permissions(view.action, queryset.model)
+        return request.user.has_perms(permissions)
+
+
 class XadminViewSet(MtyModelViewSet):
     pagination_class = CustomPageNumberPagination
-    authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
     filter_backends = (DjangoFilterBackend, SearchFilter)
+    permission_classes = (CustomPermissions,)
 
     def get_exception_handler(self):
         return custom_exception_handler
