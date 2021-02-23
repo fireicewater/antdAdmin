@@ -1,20 +1,83 @@
 import React, {FC, useMemo, useRef, useState} from 'react';
 import type {FormInstance} from 'antd';
 import {Button, message, Modal, Popconfirm, Space, Table} from 'antd';
-import {DeleteOutlined, EditOutlined, PlusOutlined} from '@ant-design/icons';
+import {DeleteOutlined, EditOutlined, KeyOutlined, PlusOutlined} from '@ant-design/icons';
 import type {ActionType, ProColumns} from '@ant-design/pro-table';
-import ProTable from '@ant-design/pro-table';
-import {addUser, queryUser, removeUser, updateUser, UserInterface} from "./service"
+import ProTable, {TableDropdown} from '@ant-design/pro-table';
+import {
+  addUser,
+  changePassword,
+  ChangePasswordFormInterface,
+  queryUser,
+  removeUser,
+  updateUser,
+  UserInterface
+} from "./service"
 import {useRequest,} from "umi"
 import {getFormColumns, getUpdateRecord} from "@/utils"
 import {queryPermission} from "@/pages/Permission/service"
-
+import {queryGroup} from "@/pages/Group/service"
+import {ModalForm, ProFormText,} from '@ant-design/pro-form';
 
 const requireColumns: string[] = [
   "username",
   "password"
 ]
+const foreignKeys: string[] = []
 
+type changePasswordType = {
+  "initialValues": Pick<ChangePasswordFormInterface, "id">,
+  "submit": (form: ChangePasswordFormInterface) => Promise<boolean | void>
+}
+
+const ChangePassword: FC<changePasswordType> = (params: changePasswordType) => {
+  return (
+    <>
+      <ModalForm<ChangePasswordFormInterface>
+        title="修改密码"
+        trigger={
+          <Button>
+            <KeyOutlined/>
+            重置密码
+          </Button>
+        }
+        initialValues={params.initialValues}
+        onFinish={params.submit}
+      >
+        <ProFormText.Password
+          name="new_password"
+          label="新密码"
+          placeholder="请输入新密码"
+          rules={[
+            {
+              required: true,
+              message: '请输入新密码',
+            },
+          ]}/>
+        <ProFormText.Password
+          name="re_password"
+          label="重复密码"
+          placeholder="请重复输入新密码"
+          dependencies={['password']}
+          rules={[
+            {
+              required: true,
+              message: '请重复输入新密码',
+            },
+            ({getFieldValue}) => ({
+              validator(_, value) {
+                if (!value || getFieldValue('new_password') === value) {
+                  return Promise.resolve();
+                }
+                return Promise.reject('密码两次输入不相同');
+              },
+            }),
+          ]}
+        />
+      </ModalForm>
+    </>
+  )
+}
 
 const table: FC<void> = () => {
   //处理通用逻辑
@@ -27,8 +90,8 @@ const table: FC<void> = () => {
   const {loading: updateLoading, run: runUpdate} = useRequest(updateUser, {manual: true});
   const {loading: createLoading, run: runCreate} = useRequest(addUser, {manual: true});
   const {loading: removeLoading, run: runRemove} = useRequest(removeUser, {manual: true});
+  const {loading: changePasswordLoading, run: runChangePassword} = useRequest(changePassword, {manual: true});
   const handleUpdate: (params: Partial<UserInterface>) => void = async (params) => {
-    console.log(params)
     await runUpdate(params, userForm.id as number);
     message.success("修改成功");
     setUpdateModelVisible(false);
@@ -36,7 +99,6 @@ const table: FC<void> = () => {
     actionRef.current?.reload();
   }
   const handleCreate: (params: Partial<UserInterface>) => void = async (params) => {
-    console.log(params);
     await runCreate(params);
     message.success("新增成功");
     setCreateModelVisible(false);
@@ -48,6 +110,7 @@ const table: FC<void> = () => {
   }
   //处理外键相关
   const {loading: PermissionLoading, data: Permission} = useRequest(() => queryPermission({all: 1}))
+  const {loading: GroupLoading, data: Group} = useRequest(() => queryGroup({all: 1}))
 
   const columns: ProColumns<UserInterface, "boolType" | "foreignKeyType">[] = [
     {
@@ -94,6 +157,24 @@ const table: FC<void> = () => {
       valueType: 'boolType',
     },
     {
+      title: '权限',
+      dataIndex: 'user_permissions',
+      valueType: 'foreignKeyType',
+      fieldProps: {
+        selectValue: Permission,
+        many: true
+      }
+    },
+    {
+      title: '组',
+      dataIndex: 'group',
+      valueType: 'foreignKeyType',
+      fieldProps: {
+        selectValue: Group,
+        many: true
+      }
+    },
+    {
       title: '加入日期',
       hideInForm: true,
       dataIndex: 'date_joined',
@@ -107,15 +188,7 @@ const table: FC<void> = () => {
       valueType: 'dateTime',
       search: false
     },
-    {
-      title: '权限',
-      dataIndex: 'user_permissions',
-      valueType: 'foreignKeyType',
-      fieldProps: {
-        selectValue: Permission,
-        many: true
-      }
-    },
+
     {
       title: '加入日期',
       dataIndex: 'date_joined',
@@ -169,11 +242,19 @@ const table: FC<void> = () => {
           <Button icon={<DeleteOutlined/>} type="primary"/>
         </Popconfirm>
         ,
-        // <TableDropdown menus={menus}
-        //                onSelect={key => {
-        //
-        //                }}
-        // />,
+        <TableDropdown
+          key={"dropdown" + index}
+          menus={[{
+            key: "changePassword",
+            name: <ChangePassword initialValues={record} submit={async (form) => {
+              form.id = record.id;
+              await runChangePassword(form);
+              message.success("重置密码成功");
+              return true;
+            }
+            }/>
+          }]}
+        />,
       ]
     }
   ];
@@ -188,7 +269,7 @@ const table: FC<void> = () => {
   }, columns);
   return (
     <>
-      < ProTable<UserInterface, Partial<UserInterface>, "boolType" | "foreignKeyType">
+      <ProTable<UserInterface, Partial<UserInterface>, "boolType" | "foreignKeyType">
         columns={columns}
         actionRef={actionRef}
         rowKey="id"

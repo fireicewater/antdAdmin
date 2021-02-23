@@ -36,7 +36,6 @@ const APP: FC = (props) => {
               return element;
             },
             renderFormItem: function (_, props, element) {
-              console.log(props);
               const {Option} = Select;
               const {selectValue, many, value, onChange}: {
                 selectValue: selectValueType[],

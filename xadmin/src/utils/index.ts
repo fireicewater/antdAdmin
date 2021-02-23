@@ -38,7 +38,6 @@ export function getFormColumns<T, U>(columns: ProColumns<T, U>[], includes: stri
       ],
     }
   })
-  console.log(copyColumns);
   copyColumns.filter(x => foreignKeys.includes(x.dataIndex as string)).forEach(x => {
     // @ts-ignore
     x.fieldProps.many = false;

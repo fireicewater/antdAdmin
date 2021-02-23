@@ -15,6 +15,12 @@ export interface UserInterface extends BaseInterface {
   user_permissions: selectValueType[] | number[]
 }
 
+export interface ChangePasswordFormInterface {
+  id: number;
+  new_password: string;
+  re_password: string;
+}
+
 export async function queryUser(params: QueryParams) {
   return await request("/user", {
     params
@@ -40,4 +46,11 @@ export async function removeUser(ids: number[]) {
   return await request(`/user/${param}`, {
     method: 'DELETE',
   });
+}
+
+export async function changePassword(params: ChangePasswordFormInterface) {
+  return await request(`/user/changePassword`, {
+    method: 'POST',
+    data: params
+  })
 }

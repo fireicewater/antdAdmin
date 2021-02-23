@@ -1,3 +1,4 @@
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
 
@@ -35,3 +36,11 @@ class TyAdminEmailVerifyRecord(models.Model):
 
     def __str__(self):
         return '{0}({1})'.format(self.code, self.email)
+
+
+class CustomUser(AbstractUser):
+    class Meta:
+        permissions = [
+            ("change_password_user", "Can change password user")
+        ]
+        db_table = "auth_user"

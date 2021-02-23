@@ -1,3 +1,4 @@
+import logging
 from copy import deepcopy
 from enum import Enum
 from typing import Any
@@ -25,6 +26,8 @@ from rest_framework.viewsets import ViewSetMixin
 from xadmin_api.pagination import CustomPageNumberPagination
 from xadmin_api.ty_settings import MAX_LIST_DISPLAY_COUNT
 from xadmin_api.utils import log_save
+
+logger = logging.getLogger()
 
 
 class ShowTypeEnum(Enum):
@@ -90,6 +93,7 @@ class BaseResponseData(object):
 
 
 def custom_exception_handler(exc, context):
+    logger.error('请求出错：{}'.format(exc), exc_info=True)
     error_message = ""
     # 事务回滚
     set_rollback()

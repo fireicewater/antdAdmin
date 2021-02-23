@@ -1,9 +1,12 @@
-from django_filters import rest_framework as filters
-from xadmin_api.custom import DateFromToRangeFilter
-from django.contrib.auth.models import Permission, Group, User
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission, Group
 from django.contrib.contenttypes.models import ContentType
+from django_filters import rest_framework as filters
+
+from xadmin_api.custom import DateFromToRangeFilter
 from xadmin_api.models import TyAdminSysLog, TyAdminEmailVerifyRecord
 
+User = get_user_model()
 
 
 class TyAdminSysLogFilter(filters.FilterSet):
@@ -22,7 +25,6 @@ class TyAdminEmailVerifyRecordFilter(filters.FilterSet):
         exclude = []
 
 
-
 class PermissionFilter(filters.FilterSet):
     content_type_text = filters.CharFilter(field_name="content_type")
 
@@ -30,11 +32,12 @@ class PermissionFilter(filters.FilterSet):
         model = Permission
         exclude = []
 
-class GroupFilter(filters.FilterSet):
 
+class GroupFilter(filters.FilterSet):
     class Meta:
         model = Group
         exclude = []
+
 
 class UserFilter(filters.FilterSet):
     last_login = DateFromToRangeFilter(field_name="last_login")
@@ -44,8 +47,8 @@ class UserFilter(filters.FilterSet):
         model = User
         exclude = []
 
-class ContentTypeFilter(filters.FilterSet):
 
+class ContentTypeFilter(filters.FilterSet):
     class Meta:
         model = ContentType
         exclude = []

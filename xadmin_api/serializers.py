@@ -1,8 +1,9 @@
-from rest_framework import serializers
-from django.contrib.auth.models import Permission, Group, User
-from django.contrib.contenttypes.models import ContentType
-from xadmin_api.models import TyAdminSysLog, TyAdminEmailVerifyRecord
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission, Group
+from django.contrib.contenttypes.models import ContentType
+from rest_framework import serializers
+
+from xadmin_api.models import TyAdminSysLog, TyAdminEmailVerifyRecord
 
 user = get_user_model()
 
@@ -173,7 +174,7 @@ class UserListSerializer(serializers.ModelSerializer):
     ty_options_display_txt = serializers.SerializerMethodField()
 
     class Meta:
-        model = User
+        model = user
         fields = "__all__"
 
     @staticmethod
@@ -185,7 +186,7 @@ class UserCreateUpdateSerializer(serializers.ModelSerializer):
     ty_options_display_txt = serializers.SerializerMethodField()
 
     class Meta:
-        model = User
+        model = user
         fields = "__all__"
 
     @staticmethod

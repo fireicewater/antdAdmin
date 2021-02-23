@@ -5,12 +5,13 @@ import demjson
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, logout
 from django.contrib.auth.hashers import make_password
-from django.contrib.auth.models import Permission, Group, User
+from django.contrib.auth.models import Permission, Group
 from django.contrib.contenttypes.models import ContentType
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views import View
 from rest_framework import views, status, serializers
+from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework_jwt.serializers import jwt_payload_handler, jwt_encode_handler
@@ -226,7 +227,7 @@ class GroupViewSet(XadminViewSet):
 
 class UserViewSet(XadminViewSet):
     serializer_class = UserListSerializer
-    queryset = User.objects.all().order_by('-pk')
+    queryset = SysUser.objects.all().order_by('-pk')
     filter_class = UserFilter
     search_fields = ["username", "first_name", "last_name", "email"]
 
@@ -235,6 +236,24 @@ class UserViewSet(XadminViewSet):
             return UserListSerializer
         else:
             return UserCreateUpdateSerializer
+
+    @action(methods=['post'], url_path="changePassword", detail=False)
+    def change_password(self, request):
+        data = request.data
+        change_password = data["new_password"]
+        change_re_password = data["re_password"]
+        if change_password != change_re_password:
+            raise ValidationError({"password": ["两次密码不可以不一致"]})
+        cur_user = SysUser.objects.get(pk=data["id"])
+        if cur_user is None:
+            raise ValidationError({"username": ["用户名不存在"]})
+        password = make_password(change_re_password)
+        cur_user.password = password
+        cur_user.save()
+        log_save(user=request.user.username, request=self.request, flag="修改",
+                 message=f'用户: {cur_user.username}密码被修改', log_type="user")
+        serializer = self.get_serializer(cur_user)
+        return BaseResponseData.success(data=serializer.data)
 
 
 class ContentTypeViewSet(XadminViewSet):

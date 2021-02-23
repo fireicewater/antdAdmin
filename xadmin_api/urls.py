@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from xadmin_api import views
 from xadmin_api.views import LoginView, CurrentUserView, UserSendCaptchaView, \
-    UploadView, MenuView, UserChangePasswordView, UserListChangePasswordView, UserLogoutView
+    UploadView, MenuView, UserChangePasswordView, UserLogoutView
 from xadmin_api.views import TyAdminSysLogViewSet, TyAdminEmailVerifyRecordViewSet
 
 router = DefaultRouter(trailing_slash=False)
@@ -24,5 +24,4 @@ urlpatterns = [
     path('upload', UploadView.as_view(), name="rich_upload"),
     path('sys/menu', MenuView.as_view(), name="sys_menu"),
     path('change_password', UserChangePasswordView.as_view(), name="change_password"),
-    path('list_change_password', UserListChangePasswordView.as_view(), name="list_change_password"),
 ]
