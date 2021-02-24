@@ -179,7 +179,7 @@ class CustomPermissions(permissions.DjangoModelPermissions):
         codes that the user is required to have.
         """
         perm = self.action_map.get(action, '%(app_label)s.%(action)s_%(model_name)s')
-        return perm % kwargs
+        return [perm % kwargs]
 
     def has_permission(self, request, view):
         if not request.user or (

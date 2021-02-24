@@ -57,8 +57,14 @@ export async function getInitialState() {
 
 export const layout = ({initialState,}: {
   initialState: { settings?: LayoutSettings; user: UserType };
-}): BasicLayoutProps => {
+}): BasicLayoutProps & {
+  logout: () => void;
+} => {
   return {
+    logout: () => {
+      localStorage.removeItem("user");
+      history.push('/login');
+    },
     onPageChange: () => {
       const {user} = initialState;
       const {location} = history;
