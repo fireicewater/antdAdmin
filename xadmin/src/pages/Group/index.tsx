@@ -4,7 +4,8 @@ import {Button, message, Modal, Popconfirm, Space, Table} from 'antd';
 import {DeleteOutlined, EditOutlined, PlusOutlined} from '@ant-design/icons';
 import type {ActionType, ProColumns} from '@ant-design/pro-table';
 import ProTable from '@ant-design/pro-table';
-import {useRequest,} from "umi"
+//@ts-ignore
+import {Access, useAccess, useRequest} from "umi"
 import {getFormColumns, getUpdateRecord} from "@/utils"
 import {addGroup, GroupInterface, queryGroup, removeGroup, updateGroup} from "./service"
 import {queryPermission} from "@/pages/Permission/service";
@@ -50,6 +51,9 @@ const table: FC<void> = () => {
 
   //处理外键相关
   const {loading: PermissionLoading, data: Permission} = useRequest(() => queryPermission({all: 1}))
+  //权限
+  const access = useAccess();
+
   const columns: ProColumns<GroupInterface, "boolType" | "foreignKeyType">[] = [
     {
       title: "id",
@@ -75,23 +79,27 @@ const table: FC<void> = () => {
       valueType: 'option',
       dataIndex: 'option',
       render: (text, record, index, action) => [
-        <Button icon={<EditOutlined/>} type="primary" key={"update" + index} onClick={() => {
-          setUpdateModelVisible(true);
-          let updateRecord = getUpdateRecord(columns, record);
-          setUserForm(updateRecord);
-        }}/>,
-        <Popconfirm
-          title="您确定要删除吗"
-          placement="top"
-          onConfirm={async () => {
-            await handleRemove([record]);
-            actionRef.current?.reload()
-          }}
-          okButtonProps={{loading: removeLoading}}
-          key={"delete" + index}
-        >
-          <Button icon={<DeleteOutlined/>} type="primary"/>
-        </Popconfirm>
+        <Access accessible={access["auth.change_group"]}>
+          <Button icon={<EditOutlined/>} type="primary" key={"update" + index} onClick={() => {
+            setUpdateModelVisible(true);
+            let updateRecord = getUpdateRecord(columns, record);
+            setUserForm(updateRecord);
+          }}/>
+        </Access>,
+        <Access accessible={access["auth.delete_group"]}>
+          <Popconfirm
+            title="您确定要删除吗"
+            placement="top"
+            onConfirm={async () => {
+              await handleRemove([record]);
+              actionRef.current?.reload()
+            }}
+            okButtonProps={{loading: removeLoading}}
+            key={"delete" + index}
+          >
+            <Button icon={<DeleteOutlined/>} type="primary"/>
+          </Popconfirm>
+        </Access>
         ,
         // <TableDropdown menus={menus}
         //                onSelect={key => {
@@ -124,12 +132,14 @@ const table: FC<void> = () => {
         tableAlertOptionRender={({selectedRows, onCleanSelected}) => {
           return (
             <Space>
-              {/*<a>导出选中</a>*/}
-              <a onClick={async () => {
-                await handleRemove(selectedRows);
-                onCleanSelected();
-              }}>批量删除</a>
+              <Access accessible={access["auth.delete_group"]}>
+                <a onClick={async () => {
+                  await handleRemove(selectedRows);
+                  onCleanSelected();
+                }}>批量删除</a>
+              </Access>
             </Space>
+
           )
         }}
         options={{
@@ -137,9 +147,12 @@ const table: FC<void> = () => {
         }}
         toolBarRender={() =>
           [
-            <Button key="button" icon={<PlusOutlined/>} type="primary" onClick={() => setCreateModelVisible(true)}>
-              新建
-            </Button>,
+            <Access accessible={access["auth.add_group"]}>
+              <Button key="button" icon={<PlusOutlined/>} type="primary" onClick={() => setCreateModelVisible(true)}>
+                新建
+              </Button>
+            </Access>
+            ,
           ]
         }
       />

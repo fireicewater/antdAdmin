@@ -115,7 +115,6 @@ const table: FC<void> = () => {
 
   //权限
   const access = useAccess();
-  console.log(access)
   const columns: ProColumns<UserInterface, "boolType" | "foreignKeyType">[] = [
     {
       title: "id",
