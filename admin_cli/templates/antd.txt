@@ -7,19 +7,19 @@ import ProTable from '@ant-design/pro-table';
 //@ts-ignore
 import {Access, useAccess, useRequest} from "umi"
 import {getFormColumns, getUpdateRecord} from "@/utils"
-{# 处理service  model name 拼接 #}
-import {GroupInterface,addGroup,queryGroup, removeGroup, updateGroup} from "./service"
-{# 外键serviec for 循环 #}
-import {queryPermission} from "@/pages/Permission/service";
+import {add{{ model }},{{ model }}Interface,query{{ model }}, remove{{ model }}, update{{ model }}} from "./service"
+{%- for field in fields|selectattr('foreign') %}
+import {query{{ field.foreign }}} from "@/pages/{{ field.label }}/{{ field.foreign }}/service";
+{% endfor %}
 
-{# require for TextField #}
 const requireColumns: string[] = [
-  "name",
-  "permissions"
+ {{  fields|selectattr('require','eq',Ture)|map(attribute='name')|map('tojson')|join(',') }}
 ]
 
 {# require for foreign #}
-const foreignKeys: string[] = []
+const foreignKeys: string[] = [
+{{  fields|selectattr('type','eq','ForeignKey')|map(attribute='name')|map('tojson')|join(',') }}
+]
 
 const table: FC<void> = () => {
   const actionRef = useRef<ActionType>();
@@ -27,32 +27,187 @@ const table: FC<void> = () => {
   const [updateModelVisible, setUpdateModelVisible] = useState<boolean>(false);
   const updateForm = useRef<FormInstance>();
   const createFrom = useRef<FormInstance>();
-  {# 替换为service 名称 #}
-  const [userForm, setUserForm] = useState<Partial<GroupInterface>>({});
-  const {loading: updateLoading, run: runUpdate} = useRequest(updateGroup, {manual: true});
-  const {loading: createLoading, run: runCreate} = useRequest(addGroup, {manual: true});
-  const {loading: removeLoading, run: runRemove} = useRequest(removeGroup, {manual: true});
 
-  const handleUpdate: (params: Partial<GroupInterface>) => void = async (params) => {
+  const [userForm, setUserForm] = useState<Partial<{{ model }}Interface>>({});
+  const {loading: updateLoading, run: runUpdate} = useRequest(update{{ model }}, {manual: true});
+  const {loading: createLoading, run: runCreate} = useRequest(add{{ model }}, {manual: true});
+  const {loading: removeLoading, run: runRemove} = useRequest(remove{{ model }}, {manual: true});
+
+  const handleUpdate: (params: Partial<{{ model }}Interface>) => void = async (params) => {
     await runUpdate(params, userForm.id as number);
     message.success("修改成功");
     setUpdateModelVisible(false);
     setUserForm({});
     actionRef.current?.reload();
   }
-  const handleCreate: (params: Partial<GroupInterface>) => void = async (params) => {
+  const handleCreate: (params: Partial<{{ model }}Interface>) => void = async (params) => {
     await runCreate(params);
     message.success("新增成功");
     setCreateModelVisible(false);
     actionRef.current?.reload();
   }
 
-  const handleRemove: (params: GroupInterface[]) => void = async (params) => {
+  const handleRemove: (params: {{ model }}Interface[]) => void = async (params) => {
     await runRemove(params.map(x => x.id));
     message.success("删除成功");
   }
 
   //处理外键相关
-
+  {%- for field in fields|selectattr('type','eq','ForeignKey') %}
+  const { data: {{ field.foreign }} } = useRequest(() => query{{ field.foreign }}({all: 1}))
+  {% endfor%}
   //权限
   const access = useAccess();
+
+  const columns: ProColumns<{{ model }}Interface, "boolType" | "foreignKeyType">[] =[
+   {%- for field in fields %}
+
+   {% endfor %},
+   {
+      title: '操作',
+      valueType: 'option',
+      dataIndex: 'option',
+      render: (text, record, index, action) => [
+        <Access accessible={access["{{ label}}.change_{{ model }}"]}>
+          <Button icon={<EditOutlined/>} type="primary" key={"update" + index} onClick={() => {
+            setUpdateModelVisible(true);
+            let updateRecord = getUpdateRecord(columns, record);
+            setUserForm(updateRecord);
+          }}/>
+        </Access>,
+        <Access accessible={access["{{ label}}.delete_{{ model }}"]}>
+          <Popconfirm
+            title="您确定要删除吗"
+            placement="top"
+            onConfirm={async () => {
+              await handleRemove([record]);
+              actionRef.current?.reload()
+            }}
+            okButtonProps={% raw %}{{loading: removeLoading}}{% endraw %}
+            key={"delete" + index}
+          >
+            <Button icon={<DeleteOutlined/>} type="primary"/>
+          </Popconfirm>
+        </Access>
+        ,
+        // <TableDropdown menus={menus}
+        //                onSelect={key => {
+        //
+        //                }}
+        // />,
+      ]
+    }
+  ];
+  const updateColumns = useMemo<ProColumns<{{ model }}Interface, "boolType" | "foreignKeyType">[]>(() => {
+    return getFormColumns<{{ model }}Interface, "boolType" | "foreignKeyType">(columns, requireColumns, foreignKeys);
+  }, columns)
+  const createColumns = useMemo<ProColumns<{{ model }}Interface, "boolType" | "foreignKeyType">[]>(() => {
+    return getFormColumns<{{ model }}Interface, "boolType" | "foreignKeyType">(columns, requireColumns, foreignKeys);
+  }, columns);
+   return (
+    <>
+      < ProTable<{{ model }}Interface, Partial<{{ model }}Interface>, "boolType" | "foreignKeyType">
+        columns={columns}
+        actionRef={actionRef}
+        rowKey="id"
+        headerTitle="{{ model }}列表"
+        request={query{{ model }} }
+        {% raw %}search={{
+          labelWidth: "auto"
+        }}
+        rowSelection={{
+          selections: [Table.SELECTION_ALL, Table.SELECTION_INVERT],
+        }}{% endraw %}
+        tableAlertOptionRender={({selectedRows, onCleanSelected}) => {
+          return (
+            <Space>
+              <Access accessible={access["{{ label }}.delete_{{ model }}"]}>
+                <a onClick={async () => {
+                  await handleRemove(selectedRows);
+                  onCleanSelected();
+                }}>批量删除</a>
+              </Access>
+            </Space>
+
+          )
+        }}
+        options={% raw %}{{
+          search: true,
+        }}{% endraw %}
+        toolBarRender={() =>
+          [
+            <Access accessible={access["{{ label }}.add_{{ model }}"]}>
+              <Button key="button" icon={<PlusOutlined/>} type="primary" onClick={() => setCreateModelVisible(true)}>
+                新建
+              </Button>
+            </Access>
+            ,
+          ]
+        }
+      />
+      {/*update*/}
+      <Modal
+        title="修改"
+        visible={updateModelVisible}
+        confirmLoading={updateLoading}
+        onCancel={() => setUpdateModelVisible(false)}
+        footer={null}
+        width={600}
+      >
+        <ProTable<{{ model }}Interface, Partial<{{ model }}Interface>, "boolType" | "foreignKeyType">
+          columns={updateColumns}
+          formRef={updateForm}
+          type="form"
+          rowKey="id"
+          onSubmit={handleUpdate}
+          onReset={() => {
+            updateForm.current?.resetFields();
+          }}
+          form={
+            {
+              initialValues: userForm,
+              labelCol: {span: 6},
+              labelAlign: 'left',
+              layout: "horizontal",
+            }
+          }
+        />
+      </Modal>
+      {/*create*/}
+      <Modal
+        title="新增"
+        visible={createModelVisible}
+        confirmLoading={createLoading}
+        onCancel={() => setCreateModelVisible(false)}
+        footer={null}
+        width={600}
+      >
+        <ProTable<{{ model }}Interface, Partial<{{ model }}Interface>, "boolType" | "foreignKeyType">
+          columns={createColumns}
+          type="form"
+          rowKey="id"
+          formRef={createFrom}
+          onSubmit={handleCreate}
+          {% raw %}search={{
+            span: {
+              lg: 12,
+              md: 12,
+              xxl: 12,
+              xl: 12,
+              sm: 12,
+              xs: 24,
+            }
+          }}
+          form={{
+              labelCol: {span: 6},
+              labelAlign: 'left',
+              layout: "horizontal",
+            }}{% endraw %}
+        />
+      </Modal>
+    </>
+  )
+}
+
+
+export default table;

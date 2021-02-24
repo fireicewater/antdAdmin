@@ -175,6 +175,7 @@ async def gen_antd_pages(label, env):
                     associated_model = field.related_model._meta.object_name
                     tempField['type'] = "ForeignKey"
                     tempField['foreign'] = associated_model
+                    tempField["label"] = field.related_model._meta.app_label
                 # 判断required
                 tempField['required'] = not field.blank
                 fields.append(tempField)
@@ -184,6 +185,7 @@ async def gen_antd_pages(label, env):
                 associated_model = field.related_model._meta.object_name
                 tempField['type'] = "manyKey"
                 tempField['foreign'] = associated_model
+                tempField["label"] = field.related_model._meta.app_label
                 fields.append(tempField)
             models[model_name] = fields
     for model, fields in models.items():
@@ -198,3 +200,9 @@ async def gen_antd_pages(label, env):
             async with aiofiles.open(service_path, 'w', encoding='utf-8') as fw:
                 await fw.write(str)
         # antd
+        antd_path = path + 'index.tsx'
+        if not os.path.exists(antd_path):
+            template = env.get_template('antd.txt')
+            str = template.render(model=model, label=label, fields=fields)
+            async with aiofiles.open(antd_path, 'w', encoding='utf-8') as fw:
+                await fw.write(str)

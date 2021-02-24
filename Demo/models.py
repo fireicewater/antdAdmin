@@ -1,5 +1,7 @@
 from django.db import models
 
+from xadmin_api.models import CustomUser
+
 
 # Create your models here.
 
@@ -18,7 +20,6 @@ class DataConnect(models.Model):
         ("oracle", "oracle"),
         ("pgsql", "pgsql"),
         ("sqlserver", "sqlserver")
-
     )
     title = models.CharField("数据连接标题", max_length=100, )
     host = models.URLField("数据库host")
@@ -27,6 +28,10 @@ class DataConnect(models.Model):
     password = models.CharField("数据库密码", max_length=100)
     database = models.CharField("数据库名", max_length=100)
     databaseType = models.CharField("数据库类型", max_length=50, choices=databaseTypeChoice)
+    sysUser = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+    )
 
     class Meta:
         verbose_name = "数据库连接"
