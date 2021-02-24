@@ -1,8 +1,8 @@
 import asyncio
+
 from django.test import TestCase
-from admin_cli.generate.generates import gen_serializer, gen_filter, gen_view
-from admin_cli.utils import init_django_env
-from jinja2 import PackageLoader, Environment
+
+from admin_cli.generate.generates import gen_serializer, gen_filter, gen_view, gen_antd_pages
 
 
 class Test(TestCase):
@@ -24,5 +24,12 @@ class Test(TestCase):
         name = "Demo"
         loop = asyncio.get_event_loop()
         loop.run_until_complete(gen_view([name]))
+        loop.close()
+        self.assertTrue(True)
+
+    def test_antd_pages(self):
+        name = "Demo"
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(gen_antd_pages([name]))
         loop.close()
         self.assertTrue(True)

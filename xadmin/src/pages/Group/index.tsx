@@ -50,7 +50,7 @@ const table: FC<void> = () => {
   }
 
   //处理外键相关
-  const {loading: PermissionLoading, data: Permission} = useRequest(() => queryPermission({all: 1}))
+  const {data: Permission} = useRequest(() => queryPermission({all: 1}))
   //权限
   const access = useAccess();
 

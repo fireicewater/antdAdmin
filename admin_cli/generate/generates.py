@@ -1,11 +1,13 @@
-import os
 import functools
+import os
+
 import aiofiles
 import django
 from django.conf import settings
-from django.db.models import ForeignKey, CharField
-from jinja2 import PackageLoader, Environment
+from django.db.models import CharField, DateField, BooleanField, IntegerField, FloatField, TextField
 from django.db.models import DateTimeField, ForeignKey, ImageField, FileField
+from jinja2 import PackageLoader, Environment
+
 from admin_cli.utils import get_model_import_path
 
 
@@ -130,7 +132,7 @@ async def gen_view(label, env):
     filters_list = [one + "Filter" for one in models]
     template = env.get_template('views.txt')
     str = template.render(app_model_import_dict=app_model_import_dict, models=models, serializers_list=serializers_list,
-                          filters_list=filters_list,model_search_dict=model_search_dict)
+                          filters_list=filters_list, model_search_dict=model_search_dict)
     path = f'{settings.BASE_DIR}/{label}/views.py'
     if os.path.exists(path):
         print("已存在filters.py跳过")
@@ -138,4 +140,61 @@ async def gen_view(label, env):
         await fw.write(str)
 
 
-async def
+@gen_wrapper
+async def gen_antd_pages(label, env):
+    # model dict key model_name value list((field_name,type))
+    models = {}
+    for one in django.apps.apps.get_models():
+        model_name = one._meta.model.__name__
+        app_label = one._meta.app_label
+        fields = []
+        model_meta = one.objects.model._meta
+        if label == app_label:
+            for field in one.objects.model._meta.fields:
+                tempField = {"name": field.name}
+                # 判断类型
+                if isinstance(field, CharField):
+                    tempField['type'] = "CharField"
+                elif isinstance(field, DateTimeField):
+                    tempField['type'] = "DateTimeField"
+                elif isinstance(field, DateField):
+                    tempField['type'] = "DateField"
+                elif isinstance(field, BooleanField):
+                    tempField['type'] = "BooleanField"
+                elif isinstance(field, IntegerField):
+                    tempField['type'] = "IntegerField"
+                elif isinstance(field, FloatField):
+                    tempField['type'] = "FloatField"
+                elif isinstance(field, ImageField):
+                    tempField['type'] = "ImageField"
+                elif isinstance(field, FileField):
+                    tempField['type'] = "FileField"
+                elif isinstance(field, TextField):
+                    tempField['type'] = "FileField"
+                elif isinstance(field, ForeignKey):
+                    associated_model = field.related_model._meta.object_name
+                    tempField['type'] = "ForeignKey"
+                    tempField['foreign'] = associated_model
+                # 判断required
+                tempField['required'] = not field.blank
+                fields.append(tempField)
+            # 处理多对多
+            for field in model_meta.many_to_many:
+                tempField = {"name": field.name}
+                associated_model = field.related_model._meta.object_name
+                tempField['type'] = "manyKey"
+                tempField['foreign'] = associated_model
+                fields.append(tempField)
+            models[model_name] = fields
+    for model, fields in models.items():
+        path = f'{settings.BASE_DIR}/xadmin/src/pages/{label}/{model}/'
+        if not os.path.exists(path):
+            os.makedirs(path)
+        # service
+        service_path = path + 'service.ts'
+        if not os.path.exists(service_path):
+            template = env.get_template('antd-service.text')
+            str = template.render(model=model, label=label, fields=fields)
+            async with aiofiles.open(service_path, 'w', encoding='utf-8') as fw:
+                await fw.write(str)
+        # antd

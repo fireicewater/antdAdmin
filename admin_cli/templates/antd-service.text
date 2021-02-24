@@ -1,0 +1,45 @@
+import {request} from 'umi';
+import {BaseInterface, QueryParams, selectValueType} from "@/utils"
+
+
+export interface {{ model }}Interface extends BaseInterface {
+  {%- for field in fields %}
+  {%- if field.type=="CharField" or  field.type=="DateTimeField" or field.type=="DateField" or field.type=="ImageField" or field.type=="FileField" or field.type=="TextField" %}
+  {{ field.name }}:string;
+  {%- elif field.type=="IntegerField" or field.type=="FloatField" %}
+  {{ field.name }}:number;
+  {%- elif field.type=="BooleanField"  %}
+  {{ field.name }}:boolean;
+  {%- elif field.type=="ForeignKey" or field.type=="manyKey" %}
+  {{ field.name }}:selectValueType|number;
+  {%- endif -%}
+  {% endfor %}
+}
+
+export async function query{{ model }}(params: QueryParams) {
+  return request('/{{ model }}', {
+    params,
+  });
+}
+
+export async function update{{ model }}(params: Partial<{{ model }}Interface>, id: number) {
+  return await request(`/{{ model }}/${id}`, {
+    method: 'PUT',
+    data: params,
+  });
+}
+
+export async function add{{ model }}(params: Partial<{{ model }}Interface>) {
+  return await request('/{{ model }}', {
+    method: 'POST',
+    data: params,
+  });
+}
+
+export async function remove{{ model }}(ids: number[]) {
+  const param = ids.join(",");
+  return await request(`/{{ model }}/${param}`, {
+    method: 'DELETE',
+  });
+}
+

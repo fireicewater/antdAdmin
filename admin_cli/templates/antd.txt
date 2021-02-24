@@ -1,0 +1,58 @@
+import React, {FC, useMemo, useRef, useState} from 'react';
+import type {FormInstance} from 'antd';
+import {Button, message, Modal, Popconfirm, Space, Table} from 'antd';
+import {DeleteOutlined, EditOutlined, PlusOutlined} from '@ant-design/icons';
+import type {ActionType, ProColumns} from '@ant-design/pro-table';
+import ProTable from '@ant-design/pro-table';
+//@ts-ignore
+import {Access, useAccess, useRequest} from "umi"
+import {getFormColumns, getUpdateRecord} from "@/utils"
+{# 处理service  model name 拼接 #}
+import {GroupInterface,addGroup,queryGroup, removeGroup, updateGroup} from "./service"
+{# 外键serviec for 循环 #}
+import {queryPermission} from "@/pages/Permission/service";
+
+{# require for TextField #}
+const requireColumns: string[] = [
+  "name",
+  "permissions"
+]
+
+{# require for foreign #}
+const foreignKeys: string[] = []
+
+const table: FC<void> = () => {
+  const actionRef = useRef<ActionType>();
+  const [createModelVisible, setCreateModelVisible] = useState<boolean>(false);
+  const [updateModelVisible, setUpdateModelVisible] = useState<boolean>(false);
+  const updateForm = useRef<FormInstance>();
+  const createFrom = useRef<FormInstance>();
+  {# 替换为service 名称 #}
+  const [userForm, setUserForm] = useState<Partial<GroupInterface>>({});
+  const {loading: updateLoading, run: runUpdate} = useRequest(updateGroup, {manual: true});
+  const {loading: createLoading, run: runCreate} = useRequest(addGroup, {manual: true});
+  const {loading: removeLoading, run: runRemove} = useRequest(removeGroup, {manual: true});
+
+  const handleUpdate: (params: Partial<GroupInterface>) => void = async (params) => {
+    await runUpdate(params, userForm.id as number);
+    message.success("修改成功");
+    setUpdateModelVisible(false);
+    setUserForm({});
+    actionRef.current?.reload();
+  }
+  const handleCreate: (params: Partial<GroupInterface>) => void = async (params) => {
+    await runCreate(params);
+    message.success("新增成功");
+    setCreateModelVisible(false);
+    actionRef.current?.reload();
+  }
+
+  const handleRemove: (params: GroupInterface[]) => void = async (params) => {
+    await runRemove(params.map(x => x.id));
+    message.success("删除成功");
+  }
+
+  //处理外键相关
+
+  //权限
+  const access = useAccess();
