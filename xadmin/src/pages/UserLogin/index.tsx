@@ -2,17 +2,17 @@ import {LockTwoTone, UserOutlined} from '@ant-design/icons';
 import {Button, Form, Input} from 'antd';
 import React from 'react';
 import styles from './style.less';
-import {history, useModel} from 'umi';
-import {AuthParam} from "@/services/auth";
+import {history} from 'umi';
+import {AccountLogin, AuthParam} from "@/services/auth";
+
 
 const Login = () => {
   const [loginAccountForm] = Form.useForm();
-  const {login} = useModel("user", model => ({login: model.login}))
 
   return (
     <div className={styles.main}>
       <Form form={loginAccountForm} onFinish={async (params: AuthParam) => {
-        await login(params);
+        await AccountLogin(params);
         history.push("/index")
       }}>
         <Form.Item

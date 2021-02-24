@@ -1,29 +1,25 @@
-import json
 import os
 
-import demjson
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, logout
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import Permission, Group
 from django.contrib.contenttypes.models import ContentType
 from django.http import JsonResponse
-from django.shortcuts import render
-from django.views import View
-from rest_framework import views, status, serializers
+from rest_framework import status, serializers
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework_jwt.serializers import jwt_payload_handler, jwt_encode_handler
 
 from xadmin_api.custom import MtyCustomExecView, XadminViewSet, custom_exception_handler, BaseResponseData
-from xadmin_api.filters import PermissionFilter, GroupFilter, UserFilter, ContentTypeFilter, TyAdminSysLogFilter, \
-    TyAdminEmailVerifyRecordFilter
+from xadmin_api.filters import PermissionFilter, GroupFilter, UserFilter, TyAdminSysLogFilter, \
+    TyAdminEmailVerifyRecordFilter, ContentTypeFilter
 from xadmin_api.models import TyAdminSysLog, TyAdminEmailVerifyRecord
 from xadmin_api.serializers import PermissionCreateUpdateSerializer, GroupCreateUpdateSerializer, \
-    UserCreateUpdateSerializer, ContentTypeCreateUpdateSerializer, PermissionListSerializer, GroupListSerializer, \
+    UserCreateUpdateSerializer, PermissionListSerializer, GroupListSerializer, \
     UserListSerializer, TyAdminSysLogSerializer, TyAdminEmailVerifyRecordSerializer, SysUserChangePasswordSerializer, \
-    ContentTypeListSerializer
+    ContentTypeListSerializer, ContentTypeCreateUpdateSerializer
 from xadmin_api.utils import send_email, save_uploaded_file, gen_file_name, log_save
 
 SysUser = get_user_model()
@@ -60,18 +56,6 @@ class RichUploadSerializer(serializers.Serializer):
         }, status=status.HTTP_400_BAD_REQUEST)
 
 
-class MenuView(views.APIView):
-    def get(self, request, *args, **kwargs):
-        data_json = os.path.join(settings.BASE_DIR, 'xadmin_api/menu.json')
-        with open(data_json, encoding='utf-8') as fr:
-            content = fr.read()
-        content = demjson.decode(content)
-        print(json.dumps(content, ensure_ascii=False))
-        return JsonResponse({
-            "data": content
-        })
-
-
 class LoginView(MtyCustomExecView):
     permission_classes = ()
 
@@ -83,11 +67,13 @@ class LoginView(MtyCustomExecView):
         if user is not None:
             payload = jwt_payload_handler(user)
             token = jwt_encode_handler(payload)
-            serializer = UserListSerializer(user)
             expireTime = settings.JWT_AUTH["JWT_EXPIRATION_DELTA"]
             return BaseResponseData.success(data={
                 "token": token,
-                "user": serializer.data,
+                "user": {"id": user.id,
+                         "name": user.username,
+                         "email": user.email,
+                         "avatar": "https://gw.alipayobjects.com/zos/antfincdn/XAosXuNZyF/BiazfanxmamNRoxxVxka.png"},
                 "expireTime": expireTime.seconds
             })
         else:
@@ -111,21 +97,20 @@ class CurrentUserView(MtyCustomExecView):
 
     def get(self, request, *args, **kwargs):
         if request.user:
-            try:
-                return JsonResponse({"id": request.user.id, "name": request.user.username, "email": request.user.email,
-                                     "avatar": "https://gw.alipayobjects.com/zos/antfincdn/XAosXuNZyF/BiazfanxmamNRoxxVxka.png"})
-            except AttributeError:
-                return JsonResponse({
-                    "errors": "暂未登录"
-                }, status=status.HTTP_200_OK)
+            return BaseResponseData.success(data={
+                "user": {"id": request.user.id,
+                         "name": request.user.username,
+                         "email": request.user.email,
+                         "avatar": "https://gw.alipayobjects.com/zos/antfincdn/XAosXuNZyF/BiazfanxmamNRoxxVxka.png"},
+            })
         else:
-            return JsonResponse({
-                "errors": "暂未登录"
-            }, status=status.HTTP_200_OK)
+            return BaseResponseData.error(401)
 
 
 class UserLogoutView(MtyCustomExecView):
-    """注销视图类"""
+    """
+    注销视图类
+    """
 
     def get(self, request):
         # django自带的logout
@@ -144,14 +129,6 @@ class UploadView(MtyCustomExecView):
             'HTTP_HOST'] + settings.MEDIA_URL
         res = rich_ser.create(validated_data=rich_ser.validated_data)
         return Response(res)
-
-
-class AdminIndexView(View):
-    # 直接调用get方法免去判断
-    def get(self, request):
-        # render就是渲染html返回用户
-        # render三变量: request 模板名称 一个字典写明传给前端的值
-        return render(request, "TyAdmin/index.html")
 
 
 class UserChangePasswordView(MtyCustomExecView):
@@ -177,6 +154,9 @@ class UserChangePasswordView(MtyCustomExecView):
 
 
 class PermissionViewSet(XadminViewSet):
+    """
+    权限
+    """
     serializer_class = PermissionListSerializer
     queryset = Permission.objects.all().order_by('-pk')
     filter_class = PermissionFilter
@@ -190,6 +170,9 @@ class PermissionViewSet(XadminViewSet):
 
 
 class GroupViewSet(XadminViewSet):
+    """
+    权限组
+    """
     serializer_class = GroupListSerializer
     queryset = Group.objects.all().order_by('-pk')
     filter_class = GroupFilter
@@ -203,6 +186,9 @@ class GroupViewSet(XadminViewSet):
 
 
 class UserViewSet(XadminViewSet):
+    """
+    用户
+    """
     serializer_class = UserListSerializer
     queryset = SysUser.objects.all().order_by('-pk')
     filter_class = UserFilter
