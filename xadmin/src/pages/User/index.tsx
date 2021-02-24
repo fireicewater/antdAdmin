@@ -13,7 +13,8 @@ import {
   updateUser,
   UserInterface
 } from "./service"
-import {useRequest,} from "umi"
+// @ts-ignore
+import {Access, useAccess, useRequest} from "umi"
 import {getFormColumns, getUpdateRecord} from "@/utils"
 import {queryPermission} from "@/pages/Permission/service"
 import {queryGroup} from "@/pages/Group/service"
@@ -112,6 +113,9 @@ const table: FC<void> = () => {
   const {loading: PermissionLoading, data: Permission} = useRequest(() => queryPermission({all: 1}))
   const {loading: GroupLoading, data: Group} = useRequest(() => queryGroup({all: 1}))
 
+  //权限
+  const access = useAccess();
+  console.log(access)
   const columns: ProColumns<UserInterface, "boolType" | "foreignKeyType">[] = [
     {
       title: "id",
@@ -224,35 +228,43 @@ const table: FC<void> = () => {
       valueType: 'option',
       dataIndex: 'option',
       render: (text, record, index, action) => [
-        <Button icon={<EditOutlined/>} type="primary" key={"update" + index} onClick={() => {
-          setUpdateModelVisible(true);
-          const updateRecord = getUpdateRecord(columns, record);
-          setUserForm(updateRecord);
-        }}/>,
-        <Popconfirm
-          title="您确定要删除用户吗"
-          placement="top"
-          onConfirm={async () => {
-            await handleRemove([record]);
-            actionRef.current?.reload()
-          }}
-          okButtonProps={{loading: removeLoading}}
-          key={"delete" + index}
-        >
-          <Button icon={<DeleteOutlined/>} type="primary"/>
-        </Popconfirm>
+        <Access accessible={access["xadmin_api.change_customuser"]}>
+          <Button icon={<EditOutlined/>} type="primary" key={"update" + index} onClick={() => {
+            setUpdateModelVisible(true);
+            const updateRecord = getUpdateRecord(columns, record);
+            setUserForm(updateRecord);
+          }}/>
+        </Access>
+        ,
+        <Access accessible={access["xadmin_api.delete_customuser"]}>
+          <Popconfirm
+            title="您确定要删除用户吗"
+            placement="top"
+            onConfirm={async () => {
+              await handleRemove([record]);
+              actionRef.current?.reload()
+            }}
+            okButtonProps={{loading: removeLoading}}
+            key={"delete" + index}
+          >
+            <Button icon={<DeleteOutlined/>} type="primary"/>
+          </Popconfirm>
+        </Access>
         ,
         <TableDropdown
           key={"dropdown" + index}
           menus={[{
             key: "changePassword",
-            name: <ChangePassword initialValues={record} submit={async (form) => {
-              form.id = record.id;
-              await runChangePassword(form);
-              message.success("重置密码成功");
-              return true;
-            }
-            }/>
+            name:
+              <Access accessible={access["xadmin_api.change_password_customuser"]}>
+                <ChangePassword initialValues={record} submit={async (form) => {
+                  form.id = record.id;
+                  await runChangePassword(form);
+                  message.success("重置密码成功");
+                  return true;
+                }
+                }/>
+              </Access>
           }]}
         />,
       ]
@@ -284,11 +296,12 @@ const table: FC<void> = () => {
         tableAlertOptionRender={({selectedRows, onCleanSelected}) => {
           return (
             <Space>¬
-              {/*<a>导出选中</a>*/}
-              <a onClick={async () => {
-                await handleRemove(selectedRows);
-                onCleanSelected();
-              }}>批量删除</a>
+              <Access accessible={access["xadmin_api.delete_customuser"]}>
+                <a onClick={async () => {
+                  await handleRemove(selectedRows);
+                  onCleanSelected();
+                }}>批量删除</a>
+              </Access>
             </Space>
           )
         }}
@@ -297,9 +310,11 @@ const table: FC<void> = () => {
         }}
         toolBarRender={() =>
           [
-            <Button key="button" icon={<PlusOutlined/>} type="primary" onClick={() => setCreateModelVisible(true)}>
-              新建
-            </Button>,
+            <Access accessible={access["xadmin_api.add_customuser"]}>
+              <Button key="button" icon={<PlusOutlined/>} type="primary" onClick={() => setCreateModelVisible(true)}>
+                新建
+              </Button>
+            </Access>,
           ]
         }
       />
