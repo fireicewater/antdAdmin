@@ -113,7 +113,7 @@ const table: FC<void> = () => {
         columns={columns}
         actionRef={actionRef}
         rowKey="id"
-        headerTitle="用户列表"
+        headerTitle="用户组列表"
         request={queryGroup}
         search={{
           labelWidth: "auto"

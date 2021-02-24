@@ -14,7 +14,8 @@ export default <IRoute[]>[
         wrappers: [
           '@/layouts/TableLayout',
         ],
-        name: '用户', // 兼容此写法
+        name: '用户',
+        access: 'xadmin_api.view_customuser',
       },
       {
         path: '/system/permission',
@@ -22,7 +23,8 @@ export default <IRoute[]>[
         wrappers: [
           '@/layouts/TableLayout',
         ],
-        name: '权限', // 兼容此写法
+        name: '权限',
+        access: 'auth.view_permission',
       },
       {
         path: '/system/group',
@@ -30,7 +32,8 @@ export default <IRoute[]>[
         wrappers: [
           '@/layouts/TableLayout',
         ],
-        name: '组', // 兼容此写法
+        name: '组',
+        access: 'auth.view_group',
       },
     ]
   },

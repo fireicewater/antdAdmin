@@ -31,3 +31,8 @@ export async function CurrentUser() {
 }
 
 
+export async function getAllPermissions() {
+  return request('/permissions', {
+    method: 'Get'
+  })
+}

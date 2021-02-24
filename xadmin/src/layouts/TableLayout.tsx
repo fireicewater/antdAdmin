@@ -31,7 +31,7 @@ const APP: FC = (props) => {
                   </Space>
                 );
               } else if (text.ty_options_display_txt) {
-                return (<span>text.ty_options_display_txt</span>)
+                return (<span>{text.ty_options_display_txt}</span>)
               }
               return element;
             },

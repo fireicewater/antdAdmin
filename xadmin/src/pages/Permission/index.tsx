@@ -125,7 +125,7 @@ const table: FC<void> = () => {
         columns={columns}
         actionRef={actionRef}
         rowKey="id"
-        headerTitle="用户列表"
+        headerTitle="权限列表"
         request={queryPermission}
         search={{
           labelWidth: "auto"

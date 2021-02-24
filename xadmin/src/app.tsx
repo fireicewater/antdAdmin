@@ -2,7 +2,7 @@ import {history, RequestConfig} from 'umi';
 import {RequestInterceptor, RequestOptionsInit} from "umi-request"
 import {getLocaleItem} from "@/utils/storage"
 import {BasicLayoutProps, Settings as LayoutSettings,} from '@ant-design/pro-layout';
-import {CurrentUser, UserType} from '@/services/auth'
+import {CurrentUser, getAllPermissions, UserType} from '@/services/auth'
 
 const tokenRequestInterceptor: RequestInterceptor
   = (url: string, options: RequestOptionsInit) => {
@@ -31,17 +31,27 @@ export const request: RequestConfig = {
 
 
 export async function getInitialState() {
-  let user = null;
+  let user: UserType | null = null;
+  let userPermissions: string[] = [];
+  let permissions: string[] = [];
   const token = getLocaleItem("user");
+  //获取用户 及用户权限
   if (token) {
     const {success, data} = await CurrentUser();
     if (success) {
       user = data.user;
+      userPermissions = userPermissions.concat(data.userPermissions);
     }
   }
-
+  //获取权限列表 用于access
+  const {success, data} = await getAllPermissions();
+  if (success) {
+    permissions = permissions.concat(data);
+  }
   return {
     user,
+    userPermissions,
+    permissions
   }
 }
 

@@ -56,6 +56,16 @@ class RichUploadSerializer(serializers.Serializer):
         }, status=status.HTTP_400_BAD_REQUEST)
 
 
+class PermissionAllView(MtyCustomExecView):
+    permission_classes = ()
+
+    def get(self, request):
+        permission_objects_all = Permission.objects.all()
+        permission_objects_all = list(
+            map(lambda x: x.content_type.app_label + "." + x.codename, permission_objects_all))
+        return BaseResponseData.success(data=permission_objects_all)
+
+
 class LoginView(MtyCustomExecView):
     permission_classes = ()
 
@@ -74,7 +84,8 @@ class LoginView(MtyCustomExecView):
                          "name": user.username,
                          "email": user.email,
                          "avatar": "https://gw.alipayobjects.com/zos/antfincdn/XAosXuNZyF/BiazfanxmamNRoxxVxka.png"},
-                "expireTime": expireTime.seconds
+                "expireTime": expireTime.seconds,
+                "userPermissions": user.get_all_permissions()
             })
         else:
             raise ValidationError({"password": ["密码错误"]})
@@ -97,11 +108,13 @@ class CurrentUserView(MtyCustomExecView):
 
     def get(self, request, *args, **kwargs):
         if request.user:
+            permissions = request.user.get_all_permissions()
             return BaseResponseData.success(data={
                 "user": {"id": request.user.id,
                          "name": request.user.username,
                          "email": request.user.email,
                          "avatar": "https://gw.alipayobjects.com/zos/antfincdn/XAosXuNZyF/BiazfanxmamNRoxxVxka.png"},
+                "userPermissions": permissions
             })
         else:
             return BaseResponseData.error(401)
@@ -187,6 +200,7 @@ class GroupViewSet(XadminViewSet):
 
 class UserViewSet(XadminViewSet):
     """
+    用户
     用户
     """
     serializer_class = UserListSerializer
