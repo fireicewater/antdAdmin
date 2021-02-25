@@ -60,9 +60,116 @@ const table: FC<void> = () => {
   const access = useAccess();
 
   const columns: ProColumns<{{ model }}Interface, "boolType" | "foreignKeyType">[] =[
+  {
+      title: "id",
+      dataIndex: 'id',
+      valueType: 'indexBorder'
+    },
    {%- for field in fields %}
-
-   {% endfor %},
+   {%- if field.type == "CharField" %}
+   {%- if field.choices is defined %}
+   {
+      title:{{ field.verboseName |tojson}},
+      dataIndex: {{field.name|tojson}},
+      valueType: 'select',
+      valueEnum: {{ field.choices|tojson }}
+    },
+   {%- else %}
+    {
+      title:{{ field.verboseName |tojson}},
+      dataIndex: {{field.name|tojson}},
+    },
+   {%- endif%}
+   {%- elif field.type =="DateTimeField" %}
+   {
+    title:{{ field.verboseName |tojson}},
+    dataIndex: {{field.name|tojson}},
+    valueType:'dateTime',
+    search: false
+   },
+   {
+      title: '{{ field.verboseName|safe|tojson }}',
+      dataIndex: '{{field.name|tojson}}',
+      valueType: 'dateRange',
+      hideInTable: true,
+      hideInForm: true,
+      search: {
+        transform: (value) => {
+          return {
+            {{ field.name }}start: value[0],
+            {{ field.name }}_end: value[1],
+          };
+        },
+      },
+    },
+   {%- elif field.type =="DateField" %}
+   {
+    title:{{ field.verboseName |tojson}},
+    dataIndex: {{field.name|tojson}},
+    valueType:'date',
+    search: false
+   },
+   {
+      title: '{{ field.verboseName|safe|tojson }}',
+      dataIndex: '{{field.name|tojson}}',
+      valueType: 'dateRange',
+      hideInTable: true,
+      hideInForm: true,
+      search: {
+        transform: (value) => {
+          return {
+            {{ field.name }}start: value[0],
+            {{ field.name }}_end: value[1],
+          };
+        },
+      },
+    },
+   {%- elif field.type =="BooleanField" %}
+   {
+    title:{{ field.verboseName |tojson}},
+    dataIndex: {{field.name|tojson}},
+    valueType:'boolType'
+   },
+   {%- elif field.type =="IntegerField" %}
+   {
+    title:{{ field.verboseName |tojson}},
+    dataIndex: {{field.name|tojson}},
+    valueType:'digit'
+   },
+   {%- elif field.type =="FloatField" %}
+   {
+    title:{{ field.verboseName |tojson}},
+    dataIndex: {{field.name|tojson}},
+    valueType:'digit'
+   },
+   {%- elif field.type =="TextField" %}
+   {
+    title:{{ field.verboseName |tojson}},
+    dataIndex: {{field.name|tojson}},
+    valueType:'textarea'
+   },
+   {%- elif field.type =="ForeignKey" %}
+   {
+    title:{{ field.verboseName |tojson}},
+    dataIndex: {{field.name|tojson}},
+    valueType:'foreignKeyType',
+    fieldProps: {
+        selectValue: {{ field.foreign }},
+        many: false
+      }
+   },
+   {%- elif field.type =="ForeignKey" %}
+   {
+    title:{{ field.verboseName |tojson}},
+    dataIndex: {{field.name|tojson}},
+    valueType:'manyKey',
+    fieldProps: {
+        selectValue: {{ field.foreign }},
+        many: true
+      }
+   },
+   {% endif %}
+   {% endfor %}
    {
       title: '操作',
       valueType: 'option',

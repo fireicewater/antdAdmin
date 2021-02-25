@@ -16,6 +16,7 @@ def gen_wrapper(func):
     async def wrapper(*args, **kw):
         userApps = args[0]
         env = Environment(loader=PackageLoader('admin_cli', 'templates'))
+        env.policies["json.dumps_kwargs"] = {"sort_keys": True, "ensure_ascii": False}
         if len(userApps) == 0:
             print("serializers models 为空")
             return
@@ -60,7 +61,7 @@ async def gen_serializer(label, env):
                 models[model_name].add((name, real_model_name, True))
                 foreign_path = get_model_import_path(real_model_name)
                 app_model_import_dict.setdefault(foreign_path, set([]).add(real_model_name))
-    template = env.get_template('serializer.txt')
+    template = env.get_template('serializer.text')
     str = template.render(app_model_import_dict=app_model_import_dict, models=models)
     path = f'{settings.BASE_DIR}/{label}/serializers.py'
     if os.path.exists(path):
@@ -97,7 +98,7 @@ async def gen_filter(label, env):
                     models[model_name].add((name, "date"))
                 elif field.__class__.__name__ == "TimeZoneField":
                     exclude.setdefault(model_name, set([])).add(name)
-    template = env.get_template('filter.txt')
+    template = env.get_template('filter.text')
     str = template.render(app_model_import_dict=app_model_import_dict, models=models, excludes=exclude)
     path = f'{settings.BASE_DIR}/{label}/filters.py'
     if os.path.exists(path):
@@ -130,7 +131,7 @@ async def gen_view(label, env):
             model_search_dict[model_name] = search_list
     serializers_list = [one + "Serializer" for one in models]
     filters_list = [one + "Filter" for one in models]
-    template = env.get_template('views.txt')
+    template = env.get_template('views.text')
     str = template.render(app_model_import_dict=app_model_import_dict, models=models, serializers_list=serializers_list,
                           filters_list=filters_list, model_search_dict=model_search_dict)
     path = f'{settings.BASE_DIR}/{label}/views.py'
@@ -151,10 +152,16 @@ async def gen_antd_pages(label, env):
         model_meta = one.objects.model._meta
         if label == app_label:
             for field in one.objects.model._meta.fields:
-                tempField = {"name": field.name}
+                tempField = {"name": field.name, "verboseName": field.verbose_name}
                 # 判断类型
                 if isinstance(field, CharField):
                     tempField['type'] = "CharField"
+                    # 处理choices
+                    if field.choices:
+                        d = {}
+                        for (key, value) in field.choices:
+                            d[key] = {"text": value}
+                        tempField["choices"] = d
                 elif isinstance(field, DateTimeField):
                     tempField['type'] = "DateTimeField"
                 elif isinstance(field, DateField):
@@ -170,7 +177,7 @@ async def gen_antd_pages(label, env):
                 elif isinstance(field, FileField):
                     tempField['type'] = "FileField"
                 elif isinstance(field, TextField):
-                    tempField['type'] = "FileField"
+                    tempField['type'] = "TextField"
                 elif isinstance(field, ForeignKey):
                     associated_model = field.related_model._meta.object_name
                     tempField['type'] = "ForeignKey"
@@ -181,7 +188,7 @@ async def gen_antd_pages(label, env):
                 fields.append(tempField)
             # 处理多对多
             for field in model_meta.many_to_many:
-                tempField = {"name": field.name}
+                tempField = {"name": field.name, "verboseName": field.verbose_name}
                 associated_model = field.related_model._meta.object_name
                 tempField['type'] = "manyKey"
                 tempField['foreign'] = associated_model
@@ -202,7 +209,7 @@ async def gen_antd_pages(label, env):
         # antd
         antd_path = path + 'index.tsx'
         if not os.path.exists(antd_path):
-            template = env.get_template('antd.txt')
+            template = env.get_template('antd.text')
             str = template.render(model=model, label=label, fields=fields)
             async with aiofiles.open(antd_path, 'w', encoding='utf-8') as fw:
                 await fw.write(str)
