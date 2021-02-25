@@ -152,7 +152,8 @@ async def gen_antd_pages(label, env):
         model_meta = one.objects.model._meta
         if label == app_label:
             for field in one.objects.model._meta.fields:
-                tempField = {"name": field.name, "verboseName": field.verbose_name}
+                tempField = {"name": field.name,
+                             "verboseName": field.verbose_name if field.verbose_name else field.name}
                 # 判断类型
                 if isinstance(field, CharField):
                     tempField['type'] = "CharField"
@@ -194,8 +195,10 @@ async def gen_antd_pages(label, env):
                 tempField['foreign'] = associated_model
                 tempField["label"] = field.related_model._meta.app_label
                 fields.append(tempField)
-            models[model_name] = fields
-    for model, fields in models.items():
+            # 去除id
+            fields = list(filter(lambda field: field['name'] != "id", fields))
+            models[model_name] = {"fields": fields, "verboseName": one._meta.verbose_name}
+    for model, value in models.items():
         path = f'{settings.BASE_DIR}/xadmin/src/pages/{label}/{model}/'
         if not os.path.exists(path):
             os.makedirs(path)
@@ -203,13 +206,13 @@ async def gen_antd_pages(label, env):
         service_path = path + 'service.ts'
         if not os.path.exists(service_path):
             template = env.get_template('antd-service.text')
-            str = template.render(model=model, label=label, fields=fields)
+            str = template.render(model=model, label=label, fields=value["fields"], title=value["verboseName"])
             async with aiofiles.open(service_path, 'w', encoding='utf-8') as fw:
                 await fw.write(str)
         # antd
         antd_path = path + 'index.tsx'
         if not os.path.exists(antd_path):
             template = env.get_template('antd.text')
-            str = template.render(model=model, label=label, fields=fields)
+            str = template.render(model=model, label=label, fields=value["fields"], title=value["verboseName"])
             async with aiofiles.open(antd_path, 'w', encoding='utf-8') as fw:
                 await fw.write(str)

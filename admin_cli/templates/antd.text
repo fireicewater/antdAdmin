@@ -217,7 +217,7 @@ const table: FC<void> = () => {
         columns={columns}
         actionRef={actionRef}
         rowKey="id"
-        headerTitle="{{ model }}列表"
+        headerTitle="{{ title }}列表"
         request={query{{ model }} }
         {% raw %}search={{
           labelWidth: "auto"
